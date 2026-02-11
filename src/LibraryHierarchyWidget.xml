@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<widget id="lowcodelabs.libraryhierarchywidget.LibraryHierarchyWidget" pluginWidget="true" needsEntityContext="true" offlineCapable="true"
+        supportedPlatform="Web"
+        xmlns="http://www.mendix.com/widget/1.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.mendix.com/widget/1.0/ ../node_modules/mendix/custom_widget.xsd">
+    <name>Library Hierarchy Widget</name>
+    <description>BPMN-based library hierarchy editor for frameworks</description>
+    <icon/>
+      <properties>
+        <!-- Library XML attribute -->
+        <propertyGroup caption="Data">
+            <property key="libraryXML" type="attribute" required="true">
+                <caption>Library XML</caption>
+                <description>Attribute to store the BPMN XML of the library hierarchy</description>
+                <attributeTypes>
+                    <attributeType name="String"/>
+                </attributeTypes>
+            </property>
+
+            <property key="frameworkName" type="attribute" required="false">
+                <caption>Framework Name</caption>
+                <description>Display name of the framework</description>
+                <attributeTypes>
+                    <attributeType name="String"/>
+                </attributeTypes>
+            </property>
+        </propertyGroup>
+
+        <!-- Actions -->
+        <propertyGroup caption="Events">
+            <property key="onLibraryClick" type="action" required="false">
+                <caption>On Library Click</caption>
+                <description>Action to execute when a library is clicked (e.g., navigate to library details)</description>
+            </property>
+
+            <property key="onSaveXML" type="action" required="false">
+                <caption>On Save XML</caption>
+                <description>Action to execute when the diagram is saved (e.g., commit changes)</description>
+            </property>
+        </propertyGroup>
+
+        <!-- Display settings -->
+        <propertyGroup caption="Display">
+            <property key="readOnly" type="boolean" defaultValue="false">
+                <caption>Read Only</caption>
+                <description>If true, the diagram cannot be edited</description>
+            </property>
+
+            <property key="heightUnit" type="enumeration" defaultValue="pixels">
+                <caption>Height Unit</caption>
+                <description>Unit for widget height</description>
+                <enumerationValues>
+                    <enumerationValue key="pixels">Pixels</enumerationValue>
+                    <enumerationValue key="percentage">Percentage</enumerationValue>
+                </enumerationValues>
+            </property>
+
+            <property key="height" type="integer" defaultValue="600">
+                <caption>Height</caption>
+                <description>Height of the widget</description>
+            </property>
+        </propertyGroup>
+    </properties>
+</widget>
