@@ -166,22 +166,115 @@ export function LibraryHierarchyWidget(props) {
     }, [libraryXML?.value]);
 
     /**
+     * Validate diagram before saving
+     */
+    const validateDiagram = useCallback(() => {
+        if (!modelerRef.current) return { valid: true, errors: [] };
+
+        const elementRegistry = modelerRef.current.get('elementRegistry');
+        const errors = [];
+        
+        // Get all elements
+        const allElements = elementRegistry.getAll();
+        
+        // Check each library for multiple parents
+        allElements.forEach(element => {
+            if (element.type === 'bpmn:SubProcess' && 
+                element.businessObject.get('library:libraryId')) {
+                
+                const incomingCount = element.incoming ? element.incoming.length : 0;
+                
+                if (incomingCount > 1) {
+                    errors.push( "A library must not have more than one parent library.");
+                }
+            }
+        });
+        
+        return {
+            valid: errors.length === 0,
+            errors: errors
+        };
+    }, []);
+
+
+    /**
      * Export current diagram as XML and save to Mendix
      */
     const exportAndSaveXML = useCallback(() => {
         if (!modelerRef.current || !onSaveXML || !onSaveXML.canExecute) return;
 
+        // Validate before saving
+        const validation = validateDiagram();
+        
+        if (!validation.valid) {
+            // Show error message
+            showValidationError(validation.errors);
+            return;
+        }
+
         modelerRef.current
             .saveXML({ format: true })
             .then(({ xml }) => {
-                // Update the Mendix attribute
                 libraryXML?.setValue(xml);
                 onSaveXML.execute();
             })
             .catch(err => {
                 console.error("Error exporting BPMN XML:", err);
             });
-    }, [libraryXML, onSaveXML]);
+    }, [libraryXML, onSaveXML, validateDiagram]);
+
+
+    /**
+     * Show validation errors
+     */
+    const showValidationError = useCallback((errors) => {
+        if (!containerRef.current) return;
+        
+        // Remove existing error messages
+        const existingErrors = containerRef.current.querySelectorAll('.validation-error-overlay');
+        existingErrors.forEach(error => error.remove());
+        
+        // Create error overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'validation-error-overlay';
+        
+        const errorHeader = document.createElement('div');
+        errorHeader.className = 'validation-error-header';
+        errorHeader.innerHTML = `
+                <span class="icon">⚠️</span>
+                <span>Alert</span>
+        `;
+        
+        const errorContent = document.createElement('div');
+        errorContent.className = 'validation-error-content';
+        errors.forEach(error => {
+            const errorLine = document.createElement('div');
+            errorLine.textContent = error;
+            errorLine.style.marginBottom = '8px';
+            errorContent.appendChild(errorLine);
+        });
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'validation-error-close';
+        closeButton.innerHTML = '×';
+        closeButton.onclick = () => overlay.remove();
+        
+        overlay.appendChild(closeButton);
+        overlay.appendChild(errorHeader);
+        overlay.appendChild(errorContent);
+        
+        containerRef.current.appendChild(overlay);
+
+        const timeout = setTimeout(() => {
+            overlay.remove();
+        }, 4000);
+        
+        // Clear timer if manually closed
+        closeButton.onclick = () => {
+            clearTimeout(timeout);
+            overlay.remove();
+        };
+    }, []);
 
     /**
  * Download current diagram as BPMN file
