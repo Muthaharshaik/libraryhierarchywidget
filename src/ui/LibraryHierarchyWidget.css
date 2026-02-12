@@ -24,25 +24,7 @@
     color: #333;
 }
 
-.btn-save {
-    padding: 8px 16px;
-    background-color: #0080ff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
 
-.btn-save:hover {
-    background-color: #0066cc;
-}
-
-.btn-save:active {
-    background-color: #0052a3;
-}
 
 .bpmn-library-container {
     flex: 1;
@@ -307,37 +289,19 @@
 }
 
 /* Download button styling */
-.btn-download {
-    padding: 8px 16px;
-    background-color: #28a745;
-    color: white;
-    border: none;
+.btn-download, .btn-save {
+    padding: 6px 12px;
+    color: #2d2d2d;
+    border: 1px solid #2d2d2d;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s;
-}
-
-.btn-download:hover {
-    background-color: #218838;
-}
-
-.btn-download:active {
-    background-color: #1e7e34;
-}
-
-/* Update existing btn-save if needed */
-.btn-save {
-    padding: 8px 16px;
-    background-color: #0080ff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    margin-top:4px;
+    height:28px;
+    display: flex;
+    align-items: center;
 }
 
 /* Responsive adjustments */

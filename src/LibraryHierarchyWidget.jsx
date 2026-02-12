@@ -1,6 +1,8 @@
 import { createElement, useEffect, useRef, useCallback } from "react";
 import BpmnModeler from "bpmn-js/lib/Modeler";
 import "./ui/LibraryHierarchyWidget.css";
+import downloadIcon from "./assets/download-svgrepo-com.svg"
+import saveIcon from "./assets/save-svgrepo-com.svg"
 
 export function LibraryHierarchyWidget(props) {
     const {
@@ -18,26 +20,26 @@ export function LibraryHierarchyWidget(props) {
     const generateDefaultXML = (name) => {
         const frameworkNameValue = name || "Framework Root";
         return `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
-                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:library="http://lowcodelabs/schema/library"
-                  id="Definitions_1" 
-                  targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_1" isExecutable="false">
+    <bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                    xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                    xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                    xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                    xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                    xmlns:library="http://lowcodelabs/schema/library"
+                    id="Definitions_1" 
+                    targetNamespace="http://bpmn.io/schema/bpmn">
+    <bpmn:process id="Process_1" isExecutable="false">
     <bpmn:subProcess id="SubProcess_Root" name="${frameworkNameValue}" library:libraryId="root" library:libraryName="${frameworkNameValue}">
     </bpmn:subProcess>
-  </bpmn:process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+    </bpmn:process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
       <bpmndi:BPMNShape id="SubProcess_Root_di" bpmnElement="SubProcess_Root">
-        <dc:Bounds x="200" y="100" width="260" height="60"/>
-      </bpmndi:BPMNShape>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
+            <dc:Bounds x="200" y="100" width="260" height="60"/>
+        </bpmndi:BPMNShape>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+    </bpmn:definitions>`;
     };
 
     /**
@@ -224,16 +226,23 @@ const downloadBPMN = useCallback(() => {
                 {!readOnly && (
                     <div className="header-buttons">
                         <button 
-                            className="btn-download"
-                            onClick={downloadBPMN}
-                        >
-                            Download BPMN
-                        </button>
-                        <button 
                             className="btn-save"
                             onClick={exportAndSaveXML}
                         >
-                            Save Framework
+                            <span>
+                                <img src={saveIcon} alt="SaveFramework" style={{width:'18px',height:'18px'}}></img>
+                                Save Framework
+                            </span>
+
+                        </button>
+                        <button 
+                            className="btn-download"
+                            onClick={downloadBPMN}
+                        >
+                            <span>
+                                <img src={downloadIcon} alt="DownloadBPMN" style={{width:'18px',height:'18px'}}></img>
+                                Download BPMN
+                            </span>
                         </button>
                     </div>
                 )}
