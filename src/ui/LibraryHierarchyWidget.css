@@ -2,7 +2,7 @@
 
 .library-hierarchy-widget {
     width: 100%;
-    height: 100vh;
+    height: calc(100vh - 180px);
     display: flex;
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -24,15 +24,13 @@
     color: #333;
 }
 
-
-
 .bpmn-library-container {
     flex: 1;
     position: relative;
     overflow: hidden;
 }
 
-/* BPMN.js default styles override */
+/* BPMN.js default styles override - NAMESPACED */
 .bpmn-library-container .djs-container {
     background-color: #fafafa !important;
 }
@@ -48,65 +46,66 @@
     pointer-events: none;
 }
 
-/* Hover effect for library elements */
-.djs-element.hover .djs-outline {
+/* Hover effect for library elements - NAMESPACED */
+.bpmn-library-container .djs-element.hover .djs-outline {
     stroke: #4A90E2 !important;
     stroke-width: 3px !important;
 }
 
-/* Selected library element */
-.djs-element.selected .djs-outline {
+/* Selected library element - NAMESPACED */
+.bpmn-library-container .djs-element.selected .djs-outline {
     stroke: #0080ff !important;
     stroke-width: 3px !important;
 }
 
-/* Custom palette styling */
-.djs-palette {
+/* Custom palette styling - NAMESPACED */
+.bpmn-library-container .djs-palette {
     background: #ffffff;
     border-right: 1px solid #ddd;
+    width: 80px !important;
 }
 
-.djs-palette .entry {
+.bpmn-library-container .djs-palette .entry {
     color: #333;
 }
 
-.djs-palette .entry:hover {
+.bpmn-library-container .djs-palette .entry:hover {
     background-color: #f0f0f0;
 }
 
-/* Connection styling for library hierarchy */
-[data-element-id] > .djs-visual > path {
+/* Connection styling for library hierarchy - NAMESPACED */
+.bpmn-library-container [data-element-id] > .djs-visual > path {
     stroke: #4A90E2;
     stroke-width: 2px;
 }
 
-[data-element-id] > .djs-visual > path:hover {
+.bpmn-library-container [data-element-id] > .djs-visual > path:hover {
     stroke: #0080ff;
     stroke-width: 3px;
 }
 
-/* Library label styling */
-.djs-label {
+/* Library label styling - NAMESPACED */
+.bpmn-library-container .djs-label {
     font-family: Arial, sans-serif;
     font-size: 12px;
     font-weight: 500;
     fill: #333;
 }
 
-/* Context pad styling */
-.djs-context-pad {
+/* Context pad styling - NAMESPACED */
+.bpmn-library-container .djs-context-pad {
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.djs-context-pad .entry:hover {
+.bpmn-library-container .djs-context-pad .entry:hover {
     background-color: #f0f0f0;
 }
 
-/* Minimap styling (if enabled) */
-.djs-minimap {
+/* Minimap styling (if enabled) - NAMESPACED */
+.bpmn-library-container .djs-minimap {
     border: 1px solid #ddd;
     background: white;
 }
@@ -134,7 +133,7 @@
     display: none !important;
 }
 
-/* Hide unwanted palette tools */
+/* Hide unwanted palette tools - ALREADY NAMESPACED */
 .bpmn-library-container .djs-palette .entry[data-action="create.start-event"],
 .bpmn-library-container .djs-palette .entry[data-action="create.intermediate-event"],
 .bpmn-library-container .djs-palette .entry[data-action="create.end-event"],
@@ -154,15 +153,11 @@
     display: none !important;
 }
 
-
-.djs-palette.two-column.open {
+.bpmn-library-container .djs-palette.two-column.open {
     width: 60px !important;
 }
 
-/* Palette Header */
-.bpmn-library-container .djs-palette {
-    width: 80px !important;
-}
+/* Palette Header - ALREADY HAS width rule above, keeping this comment for clarity */
 
 .bpmn-library-container .djs-palette::before {
     content: "Toolkit";
@@ -207,18 +202,17 @@
     display: block;
 }
 
-
 /* ========================================
    Remove Subprocess Markers (Plus Icon & Blue Arrow)
    ======================================== */
 
-/* Hide the plus icon (expand/collapse marker) */
+/* Hide the plus icon (expand/collapse marker) - NAMESPACED */
 .bpmn-library-container [data-marker="sub-process-marker"] {
     display: none !important;
 }
 
-/* Hide the blue navigation arrow at bottom-right */
-.djs-overlay-drilldown {
+/* Hide the blue navigation arrow at bottom-right - NAMESPACED */
+.bpmn-library-container .djs-overlay-drilldown {
     display: none !important;
 }
 
@@ -226,7 +220,7 @@
    Context Pad - Keep Only Delete & Connect
    ======================================== */
 
-/* Hide all context pad entries by default */
+/* Hide all context pad entries by default - ALREADY NAMESPACED */
 .bpmn-library-container .djs-context-pad .entry {
     display: none !important;
 }
@@ -243,7 +237,7 @@
     display: none !important;
 }
 
-/* Remove the plus icon marker more aggressively */
+/* Remove the plus icon marker more aggressively - ALREADY NAMESPACED */
 .bpmn-library-container [data-marker="sub-process-marker"],
 .bpmn-library-container g[data-marker="sub-process-marker"],
 .bpmn-library-container path[data-marker="sub-process-marker"],
@@ -289,7 +283,7 @@
 }
 
 /* Download button styling */
-.btn-download, .btn-save {
+.library-hierarchy-widget .btn-download, .btn-save,.btn-change {
     padding: 6px 12px;
     color: #2d2d2d;
     border: 1px solid #2d2d2d;
@@ -302,6 +296,7 @@
     height:28px;
     display: flex;
     align-items: center;
+    background-color: #fff;
 }
 
 /* === Pixel Perfect Compact Alert === */
@@ -379,7 +374,6 @@
         transform: translateY(0);
     }
 }
-
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

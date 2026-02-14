@@ -1,8 +1,12 @@
-import { createElement, useEffect, useRef, useCallback } from "react";
+import { createElement, useEffect, useRef, useCallback} from "react";
 import BpmnModeler from "bpmn-js/lib/Modeler";
 import "./ui/LibraryHierarchyWidget.css";
 import downloadIcon from "./assets/download-svgrepo-com.svg"
 import saveIcon from "./assets/save-svgrepo-com.svg"
+import undoIcon from "./assets/undo-svgrepo-com.svg"
+import redoIcon from "./assets/redo-svgrepo-com.svg"
+import dotsIcon from "./assets/three-dots-svgrepo-com.svg"
+import sendIcon from "./assets/send-2-svgrepo-com.svg"
 
 export function LibraryHierarchyWidget(props) {
     const {
@@ -277,39 +281,62 @@ export function LibraryHierarchyWidget(props) {
     }, []);
 
     /**
- * Download current diagram as BPMN file
- */
-const downloadBPMN = useCallback(() => {
-    if (!modelerRef.current) return;
+     * Handle Undo
+     */
+    const handleUndo = useCallback(() => {
+        if (!modelerRef.current) return;
+        const commandStack = modelerRef.current.get('commandStack');
+        if (commandStack.canUndo()) {
+            commandStack.undo()
+        }
+    },[])
 
-    modelerRef.current
-        .saveXML({ format: true })
-        .then(({ xml }) => {
-            // Create a blob from the XML
-            const blob = new Blob([xml], { type: 'application/bpmn+xml' });
-            
-            // Create download link
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            
-            // Use framework name for filename, or default
-            const fileName = frameworkName?.value 
-                ? `${frameworkName.value.replace(/\s+/g, '_')}_Library_Hierarchy.bpmn`
-                : 'Library_Hierarchy.bpmn';
-            
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            
-            // Cleanup
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        })
-        .catch(err => {
-            console.error("Error downloading BPMN:", err);
-        });
-}, [frameworkName]);
+    /**
+     * Handle Redo
+     */
+    const handleRedo = useCallback(() => {
+        if (!modelerRef.current) return;
+
+        const commandStack = modelerRef.current.get('commandStack');
+        if (commandStack.canRedo()) {
+            commandStack.redo();
+        }
+    }, []);
+
+    /**
+     * Download current diagram as BPMN file
+     */
+    const downloadBPMN = useCallback(() => {
+        if (!modelerRef.current) return;
+
+        modelerRef.current
+            .saveXML({ format: true })
+            .then(({ xml }) => {
+                // Create a blob from the XML
+                const blob = new Blob([xml], { type: 'application/bpmn+xml' });
+                
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                
+                // Use framework name for filename, or default
+                const fileName = frameworkName?.value 
+                    ? `${frameworkName.value.replace(/\s+/g, '_')}_Library_Hierarchy.bpmn`
+                    : 'Library_Hierarchy.bpmn';
+                
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                
+                // Cleanup
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error("Error downloading BPMN:", err);
+            });
+    }, [frameworkName]);
 
 
     return (
@@ -323,11 +350,35 @@ const downloadBPMN = useCallback(() => {
                             onClick={exportAndSaveXML}
                         >
                             <span>
-                                <img src={saveIcon} alt="SaveFramework" style={{width:'18px',height:'18px'}}></img>
+                                <img src={saveIcon} alt="SaveFramework" style={{width:'18px',height:'18px', position:'relative', top:'-1.5px'}}></img>
                                 Save Framework
                             </span>
 
                         </button>
+
+                        <button
+                           className="btn-change"
+                           onClick={handleUndo}
+                        >
+                            <img src={undoIcon} alt="Undo Changes" style={{width:'16px', height:'16px'}}/>
+                        </button>
+
+                        <button
+                           className="btn-change"
+                           onClick={handleRedo}
+                        >
+                            <img src={redoIcon} alt="Redo Changes" style={{width:'16px', height:'16px'}}/>
+                        </button>
+                        
+                        <button
+                           className="btn-save"
+                        >
+                            <span>
+                                <img src={sendIcon} alt="Move Libraries" title="Move Libraries" style={{width:'18px', height:'18px',position:'relative', top:'-1.5px'}}/>
+                                Move Libraries
+                            </span>
+                        </button>
+                        
                         <button 
                             className="btn-download"
                             onClick={downloadBPMN}
