@@ -6,7 +6,10 @@ import saveIcon from "./assets/save-svgrepo-com.svg"
 import undoIcon from "./assets/undo-svgrepo-com.svg"
 import redoIcon from "./assets/redo-svgrepo-com.svg"
 import dotsIcon from "./assets/three-dots-svgrepo-com.svg"
-import sendIcon from "./assets/send-2-svgrepo-com.svg"
+import pdfIcon from "./assets/document-svgrepo-com.svg"
+import svgIcon from "./assets/image-svgrepo-com.svg"
+import htmlIcon from "./assets/html-tag-svgrepo-com.svg"
+import printIcon from "./assets/print-svgrepo-com.svg"
 
 export function LibraryHierarchyWidget(props) {
     const {
@@ -23,6 +26,9 @@ export function LibraryHierarchyWidget(props) {
     const lastImportedXmlRef = useRef(null);
     const actionRef = useRef(null);
     const [pendingLibraryId, setPendingLibraryId] = useState(null);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportRef = useRef(null);
+
 
 
     const generateDefaultXML = (name) => {
@@ -127,6 +133,14 @@ useEffect(() => {
                         element.type === "bpmn:SubProcess" &&
                         element.businessObject.get("library:libraryId")
                     ) {
+
+                        const commandStack = modeler.get("commandStack");
+                            const isDirty = commandStack.canUndo();
+
+                            if (isDirty) {
+                                showUnsavedWarning();
+                                return; // 🚫 block navigation
+                            }
                         const libraryId = element.businessObject.get("library:libraryId");
 
                         const directEditing = modeler.get("directEditing");
@@ -203,6 +217,20 @@ useEffect(() => {
                 console.error("Error updating BPMN diagram:", err);
             });
     }, [libraryXML?.value]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (exportRef.current && !exportRef.current.contains(event.target)) {
+                setShowExportMenu(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
 
     /**
      * Validate diagram before saving
@@ -338,6 +366,28 @@ useEffect(() => {
         }
     }, []);
 
+    const showUnsavedWarning = () => {
+    if (!containerRef.current) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "validation-error-overlay";
+    overlay.innerHTML = `
+        <div class="validation-error-header">
+            <span>⚠️ Unsaved Changes</span>
+        </div>
+        <div class="validation-error-content">
+            Please save the framework before opening a library.
+        </div>
+    `;
+
+    containerRef.current.appendChild(overlay);
+
+    setTimeout(() => {
+        overlay.remove();
+    }, 5000);
+};
+
+
     /**
      * Download current diagram as BPMN file
      */
@@ -408,15 +458,53 @@ useEffect(() => {
                         </button>
                         
                         
-                        <button 
-                            className="btn-download"
-                            onClick={downloadBPMN}
-                        >
-                            <span>
-                                <img src={downloadIcon} alt="DownloadBPMN" style={{width:'18px',height:'18px'}}></img>
-                                Download BPMN
-                            </span>
-                        </button>
+                        <div className="export-wrapper" ref={exportRef}>
+                            <button
+                                className="btn-change"
+                                onClick={() => setShowExportMenu(prev => !prev)}
+                                title="Export"
+                            >
+                                <img
+                                    src={dotsIcon}
+                                    alt="Export"
+                                    style={{ width: "16px", height: "16px" }}
+                                />
+                            </button>
+
+                            {showExportMenu && (
+                                <div className="export-dropdown">
+                                     <div className="export-header">Export as</div>
+                                        <div
+                                            className="export-item"
+                                            onClick={() => {
+                                                downloadBPMN();
+                                                setShowExportMenu(false);
+                                            }}
+                                        >
+                                            <img src={downloadIcon} alt="BPMN" className="export-icon" />
+                                            <span>BPMN</span>
+                                        </div>
+
+                                    <div className="export-item">
+                                        <img src={pdfIcon} alt="PDF" className="export-icon" />
+                                        <span>PDF</span>
+                                    </div>
+                                    <div className="export-item">
+                                        <img src={svgIcon} alt="SVG" className="export-icon" />
+                                        <span>SVG</span>
+                                    </div>
+                                    <div className="export-item">
+                                         <img src={htmlIcon} alt="HTML" className="export-icon" />
+                                         <span>HTML</span>
+                                    </div>
+                                    <div className="export-item">
+                                         <img src={printIcon} alt="PRINT" className="export-icon"/>
+                                         <span>PRINT</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 )}
             </div>

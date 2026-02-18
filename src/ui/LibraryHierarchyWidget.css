@@ -290,6 +290,54 @@
     display: flex;
     gap: 8px;
 }
+/* Export Dropdown */
+
+.export-wrapper {
+    position: relative;
+}
+
+.export-dropdown {
+    position: absolute;
+    top: 36px;
+    right: 0;
+    width: 98px;
+
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+
+    padding: 6px 0;
+    z-index: 2000;
+}
+
+.export-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;              /* 👈 spacing between icon & text */
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.export-item:hover {
+    background: #f5f5f5;
+}
+
+.export-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.export-header {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    border-bottom: 1px solid #e5e5e5; /* 👈 line */
+    margin-bottom: 4px;
+}
 
 /* Download button styling */
 .library-hierarchy-widget .btn-download,
