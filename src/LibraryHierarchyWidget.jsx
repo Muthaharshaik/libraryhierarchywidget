@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef, useCallback} from "react";
+import { createElement, useEffect, useRef, useCallback, useState } from "react";
 import BpmnModeler from "bpmn-js/lib/Modeler";
 import "./ui/LibraryHierarchyWidget.css";
 import downloadIcon from "./assets/download-svgrepo-com.svg"
@@ -12,6 +12,7 @@ export function LibraryHierarchyWidget(props) {
     const {
         libraryXML,
         frameworkName,
+        clickedLibraryId,
         onLibraryClick,
         onSaveXML,
         readOnly
@@ -20,6 +21,9 @@ export function LibraryHierarchyWidget(props) {
     const containerRef = useRef(null);
     const modelerRef = useRef(null);
     const lastImportedXmlRef = useRef(null);
+    const actionRef = useRef(null);
+    const [pendingLibraryId, setPendingLibraryId] = useState(null);
+
 
     const generateDefaultXML = (name) => {
         const frameworkNameValue = name || "Framework Root";
@@ -45,6 +49,31 @@ export function LibraryHierarchyWidget(props) {
     </bpmndi:BPMNDiagram>
     </bpmn:definitions>`;
     };
+
+    // Add this useEffect to watch for when attribute is ready
+useEffect(() => {
+    if (pendingLibraryId && 
+        clickedLibraryId && 
+        clickedLibraryId.status === "available") {
+        
+        console.info('Setting pending library ID:', pendingLibraryId);
+        clickedLibraryId.setValue(pendingLibraryId);
+        
+        // Execute action
+        setTimeout(() => {
+            if (actionRef.current && actionRef.current.canExecute) {
+                actionRef.current.execute();
+            }
+            // Clear pending
+            setPendingLibraryId(null);
+        }, 100);
+    }
+}, [pendingLibraryId, clickedLibraryId?.status]);
+
+    useEffect(() => {
+    actionRef.current = onLibraryClick;
+}, [onLibraryClick]);
+
 
     /**
      * Initialize the BPMN Modeler with custom modules
@@ -91,18 +120,24 @@ export function LibraryHierarchyWidget(props) {
 
                 // Set up event listeners
                 const eventBus = modeler.get("eventBus");
-                
-                // Listen for element clicks (library selection)
-                eventBus.on("element.click", (event) => {
+                eventBus.on("element.dblclick", (event) => {
                     const { element } = event;
-                    if (element.type === "bpmn:SubProcess" && element.businessObject.get("library:libraryId")) {
+
+                    if (
+                        element.type === "bpmn:SubProcess" &&
+                        element.businessObject.get("library:libraryId")
+                    ) {
                         const libraryId = element.businessObject.get("library:libraryId");
-                        if (onLibraryClick && onLibraryClick.canExecute) {
-                            onLibraryClick.execute();
-                        }
+
+                        const directEditing = modeler.get("directEditing");
+                        directEditing.cancel();
+
+                        console.info('Library clicked:', libraryId);
+                        
+                        // Store the pending ID - useEffect will handle it when ready
+                        setPendingLibraryId(libraryId);
                     }
                 });
-
                 // Listen for changes to auto-save
                 if (onSaveXML && onSaveXML.canExecute && !readOnly) {
                     eventBus.on("commandStack.changed", () => {
@@ -342,7 +377,7 @@ export function LibraryHierarchyWidget(props) {
     return (
         <div className="library-hierarchy-widget">
             <div className="library-hierarchy-header">
-                <h3>{frameworkName?.value || "Library Hierarchy"}</h3>
+                <h3 style={{visibility:'hidden'}}>{frameworkName?.value || "Library Hierarchy"}</h3>
                 {!readOnly && (
                     <div className="header-buttons">
                         <button 
@@ -359,6 +394,7 @@ export function LibraryHierarchyWidget(props) {
                         <button
                            className="btn-change"
                            onClick={handleUndo}
+                           title="Undo"
                         >
                             <img src={undoIcon} alt="Undo Changes" style={{width:'16px', height:'16px'}}/>
                         </button>
@@ -366,18 +402,11 @@ export function LibraryHierarchyWidget(props) {
                         <button
                            className="btn-change"
                            onClick={handleRedo}
+                           title="Redo"
                         >
                             <img src={redoIcon} alt="Redo Changes" style={{width:'16px', height:'16px'}}/>
                         </button>
                         
-                        <button
-                           className="btn-save"
-                        >
-                            <span>
-                                <img src={sendIcon} alt="Move Libraries" title="Move Libraries" style={{width:'18px', height:'18px',position:'relative', top:'-1.5px'}}/>
-                                Move Libraries
-                            </span>
-                        </button>
                         
                         <button 
                             className="btn-download"

@@ -24,7 +24,9 @@ class CustomLibraryRules extends RuleProvider {
 
             // Only allow connections between SubProcesses (libraries)
             if (is(source, "bpmn:SubProcess") && is(target, "bpmn:SubProcess")) {
-                return true;
+                        return {
+            type: "bpmn:SequenceFlow"
+        };
             }
 
             return false;

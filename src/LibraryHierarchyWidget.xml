@@ -24,6 +24,14 @@
                     <attributeType name="String"/>
                 </attributeTypes>
             </property>
+
+            <property key="clickedLibraryId" type="attribute">
+                <caption>Clicked Library ID</caption>
+                <description>Stores the library:libraryId of the clicked library</description>
+                <attributeTypes>
+                    <attributeType name="String"/>
+                </attributeTypes>
+            </property>
         </propertyGroup>
 
         <!-- Actions -->
