@@ -422,6 +422,58 @@
     opacity: 1;
 }
 
+/* Lock Indicator */
+.lock-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #856404;
+}
+
+.lock-icon {
+    font-size: 16px;
+}
+
+.lock-text {
+    font-weight: 500;
+}
+
+.editable-buttons {
+    display: flex;
+    gap: 8px;
+}
+/* Lock Warning Overlay */
+.validation-error-overlay.lock-warning {
+    background: #ffc107;
+    color: #000;
+}
+
+.validation-error-overlay.lock-warning .validation-error-close {
+    color: #000;
+}
+
+
+/* Hide palette and context pad completely when locked */
+.library-hierarchy-widget[data-locked="true"] .djs-palette {
+    display: none !important;
+}
+
+.library-hierarchy-widget[data-locked="true"] .djs-context-pad {
+    display: none !important;
+}
+
+/* Disable pointer events when locked */
+.library-hierarchy-widget[data-locked="true"] .bpmn-library-container {
+    pointer-events: none;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
 /* Animation */
 @keyframes slideUp {
     from {

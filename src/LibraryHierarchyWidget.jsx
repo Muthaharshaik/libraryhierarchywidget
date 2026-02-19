@@ -18,7 +18,9 @@ export function LibraryHierarchyWidget(props) {
         clickedLibraryId,
         onLibraryClick,
         onSaveXML,
-        readOnly
+        readOnly,
+        currentUserEmail,
+        lockedUserEmail
     } = props;
 
     const containerRef = useRef(null);
@@ -29,7 +31,36 @@ export function LibraryHierarchyWidget(props) {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportRef = useRef(null);
 
+    // Determine if current user can edit
+    // Determine if current user can edit
+    const isLockedByAnotherUser = useCallback(() => {
+        // Wait for values to load
+        if (currentUserEmail?.status === "loading" || 
+            lockedUserEmail?.status === "loading") {
+            return true; // Block while loading
+        }
 
+        // ✅ NEW LOGIC: If no one is checked out (empty), EVERYONE is read-only
+        if (!lockedUserEmail?.value || !lockedUserEmail.value.trim()) {
+            return true; // No checkout = read-only for all
+        }
+        
+        // If current user email not available, block
+        if (!currentUserEmail?.value || !currentUserEmail.value.trim()) {
+            return true;
+        }
+        
+        // Compare emails - only the checked-out user can edit
+        const currentEmail = currentUserEmail.value.toLowerCase().trim();
+        const lockedEmail = lockedUserEmail.value.toLowerCase().trim();
+        
+        // If current user IS the checked-out user, they can edit
+        return currentEmail !== lockedEmail;
+    }, [currentUserEmail?.value, currentUserEmail?.status, 
+        lockedUserEmail?.value, lockedUserEmail?.status]);
+
+    // Computed readonly state
+    const isReadOnly = readOnly || isLockedByAnotherUser();
 
     const generateDefaultXML = (name) => {
         const frameworkNameValue = name || "Framework Root";
@@ -56,30 +87,29 @@ export function LibraryHierarchyWidget(props) {
     </bpmn:definitions>`;
     };
 
-    // Add this useEffect to watch for when attribute is ready
-useEffect(() => {
-    if (pendingLibraryId && 
-        clickedLibraryId && 
-        clickedLibraryId.status === "available") {
-        
-        console.info('Setting pending library ID:', pendingLibraryId);
-        clickedLibraryId.setValue(pendingLibraryId);
-        
-        // Execute action
-        setTimeout(() => {
-            if (actionRef.current && actionRef.current.canExecute) {
-                actionRef.current.execute();
-            }
-            // Clear pending
-            setPendingLibraryId(null);
-        }, 100);
-    }
-}, [pendingLibraryId, clickedLibraryId?.status]);
+    // Watch for when attribute is ready
+    useEffect(() => {
+        if (pendingLibraryId && 
+            clickedLibraryId && 
+            clickedLibraryId.status === "available") {
+            
+            console.info('Setting pending library ID:', pendingLibraryId);
+            clickedLibraryId.setValue(pendingLibraryId);
+            
+            // Execute action
+            setTimeout(() => {
+                if (actionRef.current && actionRef.current.canExecute) {
+                    actionRef.current.execute();
+                }
+                // Clear pending
+                setPendingLibraryId(null);
+            }, 100);
+        }
+    }, [pendingLibraryId, clickedLibraryId?.status]);
 
     useEffect(() => {
-    actionRef.current = onLibraryClick;
-}, [onLibraryClick]);
-
+        actionRef.current = onLibraryClick;
+    }, [onLibraryClick]);
 
     /**
      * Initialize the BPMN Modeler with custom modules
@@ -108,7 +138,6 @@ useEffect(() => {
         });
 
         modelerRef.current = modeler;
-        
 
         // Import initial XML
         const xmlToLoad = libraryXML?.value || generateDefaultXML(frameworkName?.value);
@@ -124,40 +153,56 @@ useEffect(() => {
                 const canvas = modeler.get("canvas");
                 canvas.zoom("fit-viewport");
 
+                // Disable editing if read-only or locked
+                if (isReadOnly) {
+                    const eventBus = modeler.get('eventBus');
+                    
+                    // Block all modeling operations
+                    eventBus.on('commandStack.execute', 10000, (event) => {
+                        if (isReadOnly) {
+                            event.stopPropagation();
+                            return false;
+                        }
+                    });
+                }
+
                 // Set up event listeners
                 const eventBus = modeler.get("eventBus");
+                
                 eventBus.on("element.dblclick", (event) => {
                     const { element } = event;
 
-                    if (
-                        element.type === "bpmn:SubProcess" &&
-                        element.businessObject.get("library:libraryId")
-                    ) {
+                    if (element.type === "bpmn:SubProcess" &&
+                        element.businessObject.get("library:libraryId")) {
 
-                        const commandStack = modeler.get("commandStack");
-                            const isDirty = commandStack.canUndo();
+                        // ✅ If user CAN edit (checked out by them), allow inline editing
+                        if (!isReadOnly) {
+                            // Enable direct editing (rename)
+                            const directEditing = modeler.get("directEditing");
+                            directEditing.activate(element);
+                            return;
+                        }
 
-                            if (isDirty) {
-                                showUnsavedWarning();
-                                return; // 🚫 block navigation
-                            }
-                        const libraryId = element.businessObject.get("library:libraryId");
-
+                        // ✅ If user CANNOT edit, prevent editing and navigate
+                        event.stopPropagation();
+                        event.preventDefault();
+                        
+                        // Cancel any editing that might have started
                         const directEditing = modeler.get("directEditing");
                         directEditing.cancel();
-
-                        console.info('Library clicked:', libraryId);
                         
-                        // Store the pending ID - useEffect will handle it when ready
+                        const libraryId = element.businessObject.get("library:libraryId");
+                        console.info('Library clicked (read-only):', libraryId);
                         setPendingLibraryId(libraryId);
                     }
                 });
-                // Listen for changes to auto-save
-                if (onSaveXML && onSaveXML.canExecute && !readOnly) {
-                    eventBus.on("commandStack.changed", () => {
-                        exportAndSaveXML();
-                    });
-                }
+
+                // // Listen for changes to auto-save (only if editable)
+                // if (onSaveXML && onSaveXML.canExecute && !isReadOnly) {
+                //     eventBus.on("commandStack.changed", () => {
+                //         exportAndSaveXML();
+                //     });
+                // }
             })
             .catch(err => {
                 console.error("Error importing BPMN diagram:", err);
@@ -169,7 +214,7 @@ useEffect(() => {
                 modelerRef.current.destroy();
             }
         };
-    }, []); // Run once on mount
+    }, [isReadOnly]); // Re-initialize when lock status changes
 
     /**
      * Update root library name when frameworkName changes
@@ -177,9 +222,8 @@ useEffect(() => {
     useEffect(() => {
         if (!modelerRef.current) return;
         if (!frameworkName?.value) return;
-        if (libraryXML?.value) return; // Don't override if XML already exists
+        if (libraryXML?.value) return;
 
-        // Update the root library name
         const elementRegistry = modelerRef.current.get('elementRegistry');
         const modeling = modelerRef.current.get('modeling');
         const rootElement = elementRegistry.get('SubProcess_Root');
@@ -199,7 +243,6 @@ useEffect(() => {
         if (!modelerRef.current) return;
         if (!libraryXML?.value) return;
 
-        // Skip if XML hasn't changed
         if (libraryXML.value === lastImportedXmlRef.current) {
             return;
         }
@@ -231,7 +274,6 @@ useEffect(() => {
         };
     }, []);
 
-
     /**
      * Validate diagram before saving
      */
@@ -240,11 +282,8 @@ useEffect(() => {
 
         const elementRegistry = modelerRef.current.get('elementRegistry');
         const errors = [];
-        
-        // Get all elements
         const allElements = elementRegistry.getAll();
         
-        // Check each library for multiple parents
         allElements.forEach(element => {
             if (element.type === 'bpmn:SubProcess' && 
                 element.businessObject.get('library:libraryId')) {
@@ -252,7 +291,7 @@ useEffect(() => {
                 const incomingCount = element.incoming ? element.incoming.length : 0;
                 
                 if (incomingCount > 1) {
-                    errors.push( "A library must not have more than one parent library.");
+                    errors.push("A library must not have more than one parent library.");
                 }
             }
         });
@@ -263,18 +302,16 @@ useEffect(() => {
         };
     }, []);
 
-
     /**
      * Export current diagram as XML and save to Mendix
      */
     const exportAndSaveXML = useCallback(() => {
         if (!modelerRef.current || !onSaveXML || !onSaveXML.canExecute) return;
+        if (isReadOnly) return; // Don't save if locked
 
-        // Validate before saving
         const validation = validateDiagram();
         
         if (!validation.valid) {
-            // Show error message
             showValidationError(validation.errors);
             return;
         }
@@ -288,8 +325,7 @@ useEffect(() => {
             .catch(err => {
                 console.error("Error exporting BPMN XML:", err);
             });
-    }, [libraryXML, onSaveXML, validateDiagram]);
-
+    }, [libraryXML, onSaveXML, validateDiagram, isReadOnly]);
 
     /**
      * Show validation errors
@@ -297,19 +333,17 @@ useEffect(() => {
     const showValidationError = useCallback((errors) => {
         if (!containerRef.current) return;
         
-        // Remove existing error messages
         const existingErrors = containerRef.current.querySelectorAll('.validation-error-overlay');
         existingErrors.forEach(error => error.remove());
         
-        // Create error overlay
         const overlay = document.createElement('div');
         overlay.className = 'validation-error-overlay';
         
         const errorHeader = document.createElement('div');
         errorHeader.className = 'validation-error-header';
         errorHeader.innerHTML = `
-                <span class="icon">⚠️</span>
-                <span>Alert</span>
+            <span class="icon">⚠️</span>
+            <span>Alert</span>
         `;
         
         const errorContent = document.createElement('div');
@@ -324,7 +358,6 @@ useEffect(() => {
         const closeButton = document.createElement('button');
         closeButton.className = 'validation-error-close';
         closeButton.innerHTML = '×';
-        closeButton.onclick = () => overlay.remove();
         
         overlay.appendChild(closeButton);
         overlay.appendChild(errorHeader);
@@ -336,7 +369,6 @@ useEffect(() => {
             overlay.remove();
         }, 4000);
         
-        // Clear timer if manually closed
         closeButton.onclick = () => {
             clearTimeout(timeout);
             overlay.remove();
@@ -347,46 +379,44 @@ useEffect(() => {
      * Handle Undo
      */
     const handleUndo = useCallback(() => {
-        if (!modelerRef.current) return;
+        if (!modelerRef.current || isReadOnly) return;
         const commandStack = modelerRef.current.get('commandStack');
         if (commandStack.canUndo()) {
-            commandStack.undo()
+            commandStack.undo();
         }
-    },[])
+    }, [isReadOnly]);
 
     /**
      * Handle Redo
      */
     const handleRedo = useCallback(() => {
-        if (!modelerRef.current) return;
-
+        if (!modelerRef.current || isReadOnly) return;
         const commandStack = modelerRef.current.get('commandStack');
         if (commandStack.canRedo()) {
             commandStack.redo();
         }
-    }, []);
+    }, [isReadOnly]);
 
     const showUnsavedWarning = () => {
-    if (!containerRef.current) return;
+        if (!containerRef.current) return;
 
-    const overlay = document.createElement("div");
-    overlay.className = "validation-error-overlay";
-    overlay.innerHTML = `
-        <div class="validation-error-header">
-            <span>⚠️ Unsaved Changes</span>
-        </div>
-        <div class="validation-error-content">
-            Please save the framework before opening a library.
-        </div>
-    `;
+        const overlay = document.createElement("div");
+        overlay.className = "validation-error-overlay";
+        overlay.innerHTML = `
+            <div class="validation-error-header">
+                <span>⚠️ Unsaved Changes</span>
+            </div>
+            <div class="validation-error-content">
+                Please save the framework before opening a library.
+            </div>
+        `;
 
-    containerRef.current.appendChild(overlay);
+        containerRef.current.appendChild(overlay);
 
-    setTimeout(() => {
-        overlay.remove();
-    }, 5000);
-};
-
+        setTimeout(() => {
+            overlay.remove();
+        }, 5000);
+    };
 
     /**
      * Download current diagram as BPMN file
@@ -397,15 +427,11 @@ useEffect(() => {
         modelerRef.current
             .saveXML({ format: true })
             .then(({ xml }) => {
-                // Create a blob from the XML
                 const blob = new Blob([xml], { type: 'application/bpmn+xml' });
-                
-                // Create download link
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
                 
-                // Use framework name for filename, or default
                 const fileName = frameworkName?.value 
                     ? `${frameworkName.value.replace(/\s+/g, '_')}_Library_Hierarchy.bpmn`
                     : 'Library_Hierarchy.bpmn';
@@ -413,8 +439,6 @@ useEffect(() => {
                 link.download = fileName;
                 document.body.appendChild(link);
                 link.click();
-                
-                // Cleanup
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
             })
@@ -423,13 +447,15 @@ useEffect(() => {
             });
     }, [frameworkName]);
 
-
-    return (
-        <div className="library-hierarchy-widget">
-            <div className="library-hierarchy-header">
-                <h3 style={{visibility:'hidden'}}>{frameworkName?.value || "Library Hierarchy"}</h3>
-                {!readOnly && (
-                    <div className="header-buttons">
+return (
+    <div className="library-hierarchy-widget" data-locked={isLockedByAnotherUser()}>
+        <div className="library-hierarchy-header">
+            <h3 style={{visibility:'hidden'}}>{frameworkName?.value || "Library Hierarchy"}</h3>
+            
+            {/* Show full buttons if NOT locked, only export if locked */}
+            <div className="header-buttons">
+                {!isReadOnly && (
+                    <div className="editable-buttons">
                         <button 
                             className="btn-save"
                             onClick={exportAndSaveXML}
@@ -438,7 +464,6 @@ useEffect(() => {
                                 <img src={saveIcon} alt="SaveFramework" style={{width:'18px',height:'18px', position:'relative', top:'-1.5px'}}></img>
                                 Save Framework
                             </span>
-
                         </button>
 
                         <button
@@ -456,68 +481,69 @@ useEffect(() => {
                         >
                             <img src={redoIcon} alt="Redo Changes" style={{width:'16px', height:'16px'}}/>
                         </button>
-                        
-                        
-                        <div className="export-wrapper" ref={exportRef}>
-                            <button
-                                className="btn-change"
-                                onClick={() => setShowExportMenu(prev => !prev)}
-                                title="Export"
-                            >
-                                <img
-                                    src={dotsIcon}
-                                    alt="Export"
-                                    style={{ width: "16px", height: "16px" }}
-                                />
-                            </button>
-
-                            {showExportMenu && (
-                                <div className="export-dropdown">
-                                     <div className="export-header">Export as</div>
-                                        <div
-                                            className="export-item"
-                                            onClick={() => {
-                                                downloadBPMN();
-                                                setShowExportMenu(false);
-                                            }}
-                                        >
-                                            <img src={downloadIcon} alt="BPMN" className="export-icon" />
-                                            <span>BPMN</span>
-                                        </div>
-
-                                    <div className="export-item">
-                                        <img src={pdfIcon} alt="PDF" className="export-icon" />
-                                        <span>PDF</span>
-                                    </div>
-                                    <div className="export-item">
-                                        <img src={svgIcon} alt="SVG" className="export-icon" />
-                                        <span>SVG</span>
-                                    </div>
-                                    <div className="export-item">
-                                         <img src={htmlIcon} alt="HTML" className="export-icon" />
-                                         <span>HTML</span>
-                                    </div>
-                                    <div className="export-item">
-                                         <img src={printIcon} alt="PRINT" className="export-icon"/>
-                                         <span>PRINT</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
                     </div>
                 )}
+                
+                {/* Export menu - always visible */}
+                <div className="export-wrapper" ref={exportRef}>
+                    <button
+                        className="btn-change"
+                        onClick={() => setShowExportMenu(prev => !prev)}
+                        title="Export"
+                    >
+                        <img
+                            src={dotsIcon}
+                            alt="Export"
+                            style={{ width: "16px", height: "16px" }}
+                        />
+                    </button>
+
+                    {showExportMenu && (
+                        <div className="export-dropdown">
+                             <div className="export-header">Export as</div>
+                                <div
+                                    className="export-item"
+                                    onClick={() => {
+                                        downloadBPMN();
+                                        setShowExportMenu(false);
+                                    }}
+                                >
+                                    <img src={downloadIcon} alt="BPMN" className="export-icon" />
+                                    <span>BPMN</span>
+                                </div>
+
+                            <div className="export-item">
+                                <img src={pdfIcon} alt="PDF" className="export-icon" />
+                                <span>PDF</span>
+                            </div>
+                            <div className="export-item">
+                                <img src={svgIcon} alt="SVG" className="export-icon" />
+                                <span>SVG</span>
+                            </div>
+                            <div className="export-item">
+                                 <img src={htmlIcon} alt="HTML" className="export-icon" />
+                                 <span>HTML</span>
+                            </div>
+                            <div className="export-item">
+                                 <img src={printIcon} alt="PRINT" className="export-icon"/>
+                                 <span>PRINT</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div 
-                ref={containerRef} 
-                className="bpmn-library-container"
-                style={{ 
-                    height: "600px", 
-                    width: "100%",
-                    border: "1px solid #ccc",
-                    backgroundColor: "#fafafa"
-                }}
-            />
         </div>
-    );
+        <div 
+            ref={containerRef} 
+            className="bpmn-library-container"
+            style={{ 
+                height: "600px", 
+                width: "100%",
+                border: "1px solid #ccc",
+                backgroundColor: "#fafafa",
+                opacity: isLockedByAnotherUser() ? 0.7 : 1
+            }}
+        />
+    </div>
+);
 }
