@@ -225,9 +225,32 @@
     display: none !important;
 }
 
+/* Make context pad horizontal instead of vertical */
+.bpmn-library-container .djs-context-pad {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    padding: 4px !important;
+}
+
+/* Adjust group containers to be horizontal */
+.bpmn-library-container .djs-context-pad .group {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+}
+
+/* Remove any vertical spacing */
+.bpmn-library-container .djs-context-pad .entry {
+    display: block !important;
+    margin: 0 !important;
+}
+
 /* Show only delete and connect */
 .bpmn-library-container .djs-context-pad .entry[data-action="delete"],
-.bpmn-library-container .djs-context-pad .entry[data-action="connect"] {
+.bpmn-library-container .djs-context-pad .entry[data-action="connect"],
+.bpmn-library-container .djs-context-pad .entry[data-action="open-library"]
+{
     display: block !important;
 }
 
@@ -472,6 +495,17 @@
     pointer-events: none;
     opacity: 0.8;
     cursor: not-allowed;
+}
+
+/* Custom Open Library Icon */
+.custom-open-library-icon::before {
+    content: "📚" !important;
+    font-size: 16px !important;
+}
+
+/* Alternative: Use a visible Unicode character */
+.custom-open-library-icon::after {
+    content: "" !important;
 }
 
 /* Animation */

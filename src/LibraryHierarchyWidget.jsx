@@ -168,6 +168,16 @@ export function LibraryHierarchyWidget(props) {
 
                 // Set up event listeners
                 const eventBus = modeler.get("eventBus");
+                eventBus.on('library.unsaved-warning', () => {
+                    showUnsavedWarning();
+                });
+
+                // ⭐ ADD THIS: Listen for "Open Library" from context pad
+                eventBus.on('library.open', (event) => {
+                    const libraryId = event.libraryId;
+                    console.info('Opening library from context pad:', libraryId);
+                    setPendingLibraryId(libraryId);
+                });
                 
                 eventBus.on("element.dblclick", (event) => {
                     const { element } = event;
@@ -197,6 +207,7 @@ export function LibraryHierarchyWidget(props) {
                     }
                 });
 
+                //if the client wants Auto save instead of manually saving we can comment out this
                 // // Listen for changes to auto-save (only if editable)
                 // if (onSaveXML && onSaveXML.canExecute && !isReadOnly) {
                 //     eventBus.on("commandStack.changed", () => {
