@@ -1,139 +1,219 @@
-/* Library Hierarchy Widget Styles */
+/* Library Hierarchy Widget Styles — Figma redesign */
 
+/* ── Design tokens ── */
+:root {
+    --lhw-bg:            #eef0f5;   /* canvas background — Figma grey-blue */
+    --lhw-header-bg:     #ffffff;
+    --lhw-border:        #e0e4ea;
+    --lhw-node-navy:     #1e2d4a;
+    --lhw-node-hover:    #263860;
+    --lhw-accent:        #2cb5b5;   /* teal — child node border & connection dots */
+    --lhw-conn:          #b0bed0;   /* light grey connection line */
+    --lhw-text-dark:     #1a1f36;
+    --lhw-text-muted:    #6b7a99;
+}
+
+/* ── Widget wrapper ── */
 .library-hierarchy-widget {
     width: 100%;
     height: calc(100vh - 180px);
     display: flex;
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--lhw-bg);
 }
 
+/* ── Header ── */
 .library-hierarchy-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
+    padding: 10px 16px;
+    background-color: var(--lhw-header-bg);
+    border-bottom: 1px solid var(--lhw-border);
 }
 
 .library-hierarchy-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
-    color: #333;
+    color: var(--lhw-text-dark);
 }
 
+/* ── Canvas container ── */
 .bpmn-library-container {
     flex: 1;
     position: relative;
     overflow: hidden;
+    background: var(--lhw-bg) !important;
 }
 
-/* BPMN.js default styles override - NAMESPACED */
+/* Solid background — no dot grid */
 .bpmn-library-container .djs-container {
-    background-color: #fafafa !important;
+    background-color: var(--lhw-bg) !important;
 }
 
-/* Custom library icon in palette */
-.library-icon::before {
-    content: "📚";
-    font-size: 20px;
-}
-
-/* Library element styling */
-.library-icon-group {
-    pointer-events: none;
-}
-
-/* Hover effect for library elements - NAMESPACED */
+/* ── Node hover outline ── */
 .bpmn-library-container .djs-element.hover .djs-outline {
-    stroke: #4A90E2 !important;
-    stroke-width: 3px !important;
+    stroke: var(--lhw-accent) !important;
+    stroke-width: 2.5px !important;
+    rx: 10 !important;
 }
 
-/* Selected library element - NAMESPACED */
+/* ── Node selected outline ── */
 .bpmn-library-container .djs-element.selected .djs-outline {
-    stroke: #0080ff !important;
+    stroke: var(--lhw-accent) !important;
     stroke-width: 3px !important;
+    rx: 10 !important;
 }
 
-/* Custom palette styling - NAMESPACED */
-.bpmn-library-container .djs-palette {
-    background: #ffffff;
-    border-right: 1px solid #ddd;
-    width: 80px !important;
-}
-
-.bpmn-library-container .djs-palette .entry {
-    color: #333;
-}
-
-.bpmn-library-container .djs-palette .entry:hover {
-    background-color: #f0f0f0;
-}
-
-/* Connection styling for library hierarchy - NAMESPACED */
-.bpmn-library-container [data-element-id] > .djs-visual > path {
-    stroke: #4A90E2;
-    stroke-width: 2px;
-}
-
-.bpmn-library-container [data-element-id] > .djs-visual > path:hover {
-    stroke: #0080ff;
-    stroke-width: 3px;
-}
-
-/* Library label styling - NAMESPACED */
+/* ── Hide bpmn-js default text label (we render our own) ── */
 .bpmn-library-container .djs-label {
-    font-family: Arial, sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    fill: #333;
-}
-
-/* Context pad styling - NAMESPACED */
-.bpmn-library-container .djs-context-pad {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.bpmn-library-container .djs-context-pad .entry:hover {
-    background-color: #f0f0f0;
-}
-
-/* Minimap styling (if enabled) - NAMESPACED */
-.bpmn-library-container .djs-minimap {
-    border: 1px solid #ddd;
-    background: white;
-}
-
-/* Loading state */
-.library-hierarchy-widget.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-/* Error state */
-.library-hierarchy-error {
-    padding: 20px;
-    text-align: center;
-    color: #d32f2f;
-    background-color: #ffebee;
-    border: 1px solid #ef5350;
-    border-radius: 4px;
-    margin: 16px;
-}
-
-/* Read-only mode */
-.library-hierarchy-widget[data-readonly="true"] .djs-palette,
-.library-hierarchy-widget[data-readonly="true"] .djs-context-pad {
     display: none !important;
 }
 
-/* Hide unwanted palette tools - ALREADY NAMESPACED */
+/* ══════════════════════════════════════════════════════════
+   TOOLKIT / PALETTE  — Figma-inspired redesign
+   ══════════════════════════════════════════════════════════ */
+
+/* Panel shell */
+.bpmn-library-container .djs-palette {
+    position: absolute !important;
+    top: 16px !important;
+    left: 16px !important;
+    width: 55px !important;
+    background: #ffffff !important;
+    border: 1px solid #e4e8f0 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 20px rgba(30,45,74,0.10) !important;
+    padding: 10px 0 12px !important;
+    overflow: visible !important;
+}
+
+/* Hide the two-column toggle bpmn-js adds */
+.bpmn-library-container .djs-palette .djs-palette-toggle {
+    display: none !important;
+}
+
+/* Keep it single-column always */
+.bpmn-library-container .djs-palette.two-column.open {
+    width: 55px !important;
+}
+
+/* The inner entries container — force centering */
+.bpmn-library-container .djs-palette .djs-palette-entries {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+/* Each group within entries */
+.bpmn-library-container .djs-palette .djs-palette-entries .group {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+/* Each tool entry */
+.bpmn-library-container .djs-palette .entry {
+    width: 36px !important;
+    height: 36px !important;
+    min-height: unset !important;
+    margin: 3px auto !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: background 0.15s, box-shadow 0.15s !important;
+    color: #4a5568 !important;
+    left: unset !important;
+    float: none !important;
+}
+
+/* Icon inside entry */
+.bpmn-library-container .djs-palette .entry [class*="bpmn-icon"],
+.bpmn-library-container .djs-palette .entry [class^="bpmn-icon"] {
+    font-size: 15px !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    color: #4a5568 !important;
+}
+
+/* Tooltip on hover */
+.bpmn-library-container .djs-palette .entry::after {
+    content: attr(title) !important;
+    position: absolute !important;
+    left: 44px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: #1e2d4a !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+    padding: 4px 9px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transition: opacity 0.15s !important;
+    z-index: 9999 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18) !important;
+}
+.bpmn-library-container .djs-palette .entry:hover::after {
+    opacity: 1 !important;
+}
+
+/* Hover state */
+.bpmn-library-container .djs-palette .entry:hover {
+    background-color: #f0f4ff !important;
+}
+.bpmn-library-container .djs-palette .entry:hover [class*="bpmn-icon"] {
+    color: #2563eb !important;
+}
+
+/* ── Active / selected highlight ────────────────────────────────────────────
+   bpmn-js adds .active on the entry when a tool is toggled on.
+   We also cover :active (mousedown) and [aria-pressed] for safety.         */
+.bpmn-library-container .djs-palette .entry.active,
+.bpmn-library-container .djs-palette .entry[aria-pressed="true"] {
+    background-color: #1e2d4a !important;
+    box-shadow: 0 2px 10px rgba(30,45,74,0.28) !important;
+}
+.bpmn-library-container .djs-palette .entry.active [class*="bpmn-icon"],
+.bpmn-library-container .djs-palette .entry[aria-pressed="true"] [class*="bpmn-icon"] {
+    color: #ffffff !important;
+}
+/* Also fire on mousedown so it feels instant */
+.bpmn-library-container .djs-palette .entry:active {
+    background-color: #1e2d4a !important;
+}
+.bpmn-library-container .djs-palette .entry:active [class*="bpmn-icon"] {
+    color: #ffffff !important;
+}
+
+/* Divider between tool groups */
+.bpmn-library-container .djs-palette .separator {
+    width: 32px !important;
+    height: 1px !important;
+    background: #e4e8f0 !important;
+    margin: 5px auto !important;
+    border: none !important;
+    display: block !important;
+}
+
+/* ── Hide unwanted default bpmn-js palette entries ── */
 .bpmn-library-container .djs-palette .entry[data-action="create.start-event"],
 .bpmn-library-container .djs-palette .entry[data-action="create.intermediate-event"],
 .bpmn-library-container .djs-palette .entry[data-action="create.end-event"],
@@ -148,119 +228,41 @@
     display: none !important;
 }
 
-/* Also hide their separators if they become orphaned */
-.bpmn-library-container .djs-palette .separator:empty {
+/* ── "Add Library" — folder+ SVG icon ── */
+.bpmn-library-container .djs-palette .entry[data-action="create.library"] {
+    margin-top: 4px !important;
+    background-color: #f0fafa !important;
+    border: 1.5px dashed #2cb5b5 !important;
+    /* SVG applied directly on the entry (bpmn-js puts className on entry div) */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232cb5b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/%3E%3Cline x1='12' y1='11' x2='12' y2='17'/%3E%3Cline x1='9' y1='14' x2='15' y2='14'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 20px 20px !important;
+}
+
+/* Completely suppress the bpmn font glyph — entry IS the icon container */
+.bpmn-library-container .djs-palette .entry[data-action="create.library"]::before,
+.bpmn-library-container .djs-palette .entry[data-action="create.library"] [class*="bpmn-icon"],
+.bpmn-library-container .djs-palette .entry[data-action="create.library"] [class*="bpmn-icon"]::before {
+    content: "" !important;
+    font-size: 0 !important;
     display: none !important;
 }
 
-.bpmn-library-container .djs-palette.two-column.open {
-    width: 60px !important;
+.bpmn-library-container .djs-palette .entry[data-action="create.library"]:hover {
+    background-color: #e0f5f5 !important;
+    border-style: solid !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232cb5b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/%3E%3Cline x1='12' y1='11' x2='12' y2='17'/%3E%3Cline x1='9' y1='14' x2='15' y2='14'/%3E%3C/svg%3E") !important;
 }
 
-/* Palette Header - ALREADY HAS width rule above, keeping this comment for clarity */
-
-.bpmn-library-container .djs-palette::before {
-    content: "Toolkit";
-    display: block;
-    padding: 12px 8px;
-    font-weight: 600;
-    font-size: 14px;
-    color: #333;
-    border-bottom: 1px solid #ddd;
-    background: #f8f9fa;
+.bpmn-library-container .djs-palette .entry[data-action="create.library"].active,
+.bpmn-library-container .djs-palette .entry[data-action="create.library"]:active {
+    background-color: #2cb5b5 !important;
+    border-color: #2cb5b5 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/%3E%3Cline x1='12' y1='11' x2='12' y2='17'/%3E%3Cline x1='9' y1='14' x2='15' y2='14'/%3E%3C/svg%3E") !important;
 }
 
-/* Style palette entries to show labels */
-.bpmn-library-container .djs-palette .entry {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    padding: 8px 4px !important;
-    height: auto !important;
-    min-height: 60px !important;
-}
-
-.bpmn-library-container .djs-palette .entry::after {
-    content: attr(title);
-    display: block;
-    font-size: 11px;
-    color: #666;
-    margin-top: 4px;
-    text-align: center;
-    line-height: 1.2;
-}
-
-/* Adjust icon size */
-.bpmn-library-container .djs-palette .entry [class*="bpmn-icon"] {
-    font-size: 24px !important;
-}
-
-/* Custom Library Icon */
-.bpmn-library-container .djs-palette .entry[data-action="create.library"]::before {
-    content: "📚";
-    font-size: 24px;
-    display: block;
-}
-
-/* ========================================
-   Remove Subprocess Markers (Plus Icon & Blue Arrow)
-   ======================================== */
-
-/* Hide the plus icon (expand/collapse marker) - NAMESPACED */
-.bpmn-library-container [data-marker="sub-process-marker"] {
-    display: none !important;
-}
-
-/* Hide the blue navigation arrow at bottom-right - NAMESPACED */
-.bpmn-library-container .djs-overlay-drilldown {
-    display: none !important;
-}
-
-/* ========================================
-   Context Pad - Keep Only Delete & Connect
-   ======================================== */
-
-/* Hide all context pad entries by default - ALREADY NAMESPACED */
-.bpmn-library-container .djs-context-pad .entry {
-    display: none !important;
-}
-
-/* Make context pad horizontal instead of vertical */
-.bpmn-library-container .djs-context-pad {
-    display: flex !important;
-    flex-direction: row !important;
-    gap: 4px !important;
-    padding: 4px !important;
-}
-
-/* Adjust group containers to be horizontal */
-.bpmn-library-container .djs-context-pad .group {
-    display: flex !important;
-    flex-direction: row !important;
-    gap: 4px !important;
-}
-
-/* Remove any vertical spacing */
-.bpmn-library-container .djs-context-pad .entry {
-    display: block !important;
-    margin: 0 !important;
-}
-
-/* Show only delete and connect */
-.bpmn-library-container .djs-context-pad .entry[data-action="delete"],
-.bpmn-library-container .djs-context-pad .entry[data-action="connect"],
-.bpmn-library-container .djs-context-pad .entry[data-action="open-library"]
-{
-    display: block !important;
-}
-
-/* Also hide the append/replace entries if they show up */
-.bpmn-library-container .djs-context-pad .entry[data-action^="append"],
-.bpmn-library-container .djs-context-pad .entry[data-action^="replace"] {
-    display: none !important;
-}
-
-/* Remove the plus icon marker more aggressively - ALREADY NAMESPACED */
+/* ── Subprocess marker removal ── */
 .bpmn-library-container [data-marker="sub-process-marker"],
 .bpmn-library-container g[data-marker="sub-process-marker"],
 .bpmn-library-container path[data-marker="sub-process-marker"],
@@ -269,183 +271,185 @@
     visibility: hidden !important;
 }
 
-/* Remove any SVG path that contains the plus icon pattern */
-.bpmn-library-container .djs-element[data-element-id*="SubProcess"] path[d*="M122.5"] {
+.bpmn-library-container .djs-overlay-drilldown        { display: none !important; }
+.bpmn-library-container .djs-visual > g > rect[width="14"][height="14"] { display: none !important; }
+.bpmn-library-container .djs-visual > rect[width="14"][height="14"]     { display: none !important; }
+.bpmn-library-container path[data-marker="sub-process"]                 { display: none !important; }
+
+/* ── Context pad ── */
+.bpmn-library-container .djs-context-pad {
+    background: #ffffff;
+    border: 1px solid var(--lhw-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    padding: 4px !important;
+}
+.library-hierarchy-widget .bpmn-library-container .djs-context-pad {
+  width:100px !important;
+}
+
+.bpmn-library-container .djs-context-pad .group {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+}
+
+.bpmn-library-container .djs-context-pad .entry {
+    display: none !important;
+    margin: 0 !important;
+}
+
+.bpmn-library-container .djs-context-pad .entry[data-action="delete"],
+.bpmn-library-container .djs-context-pad .entry[data-action="connect"],
+.bpmn-library-container .djs-context-pad .entry[data-action="open-library"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+}
+
+/* open-library entry uses custom-open-library-icon directly on the entry div */
+.bpmn-library-container .djs-context-pad .entry[data-action="open-library"] {
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 18px 18px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232cb5b5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E") !important;
+}
+.bpmn-library-container .djs-context-pad .entry[data-action="open-library"]:hover {
+    background-color: #2cb5b5 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E") !important;
+}
+
+.bpmn-library-container .djs-context-pad .entry[data-action^="append"],
+.bpmn-library-container .djs-context-pad .entry[data-action^="replace"] {
     display: none !important;
 }
 
-/* Hide the subprocess marker specifically */
-.bpmn-library-container .djs-visual > g > path[fill="white"][stroke="rgb(34, 36, 42)"] {
-    display: none !important;
+.bpmn-library-container .djs-context-pad .entry:hover {
+    background-color: #f3f5f9;
+    border-radius: 4px;
 }
 
-/* Remove the subprocess marker square (the empty box where plus icon was) */
-.bpmn-library-container .djs-visual > g > rect[width="14"][height="14"] {
-    display: none !important;
-}
-
-/* More specific - target white filled small rectangles */
-.bpmn-library-container .djs-visual > g > rect[width="14"][height="14"][fill="white"] {
-    display: none !important;
-}
-
-/* Also hide any rect with stroke rgb(34, 36, 42) and small size */
-.bpmn-library-container .djs-visual rect[width="14"][height="14"][rx="0"] {
-    display: none !important;
-}
-
-/* Target by transform attribute if it has the marker position */
-.bpmn-library-container .djs-visual > g > rect[transform*="122.5"] {
-    display: none !important;
-}
-/* Hide SubProcess collapse (+) marker */
-.bpmn-library-container path[data-marker="sub-process"] {
-    display: none !important;
-}
-
-/* Hide the small white background box behind + */
-.bpmn-library-container .djs-visual > rect[width="14"][height="14"] {
-    display: none !important;
-}
-
-/* Button container */
+/* ── Header buttons ── */
 .header-buttons {
     display: flex;
     gap: 8px;
 }
-/* Export Dropdown */
 
-.export-wrapper {
-    position: relative;
+.library-hierarchy-widget .btn-download,
+.library-hierarchy-widget .btn-save,
+.library-hierarchy-widget .btn-change {
+    padding: 6px 12px;
+    color: var(--lhw-text-dark);
+    border: 1px solid var(--lhw-border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s, box-shadow 0.15s;
+    margin-top: 2px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
+
+.library-hierarchy-widget .btn-save:hover,
+.library-hierarchy-widget .btn-change:hover {
+    background-color: #f3f5f9;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* ── Export dropdown ── */
+.export-wrapper { position: relative; }
 
 .export-dropdown {
     position: absolute;
     top: 36px;
     right: 0;
-    width: 98px;
-
+    width: 110px;
     background: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-
+    border: 1px solid var(--lhw-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     padding: 6px 0;
     z-index: 2000;
+}
+
+.export-header {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--lhw-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--lhw-border);
+    margin-bottom: 4px;
 }
 
 .export-item {
     display: flex;
     align-items: center;
-    gap: 10px;              /* 👈 spacing between icon & text */
-    padding: 10px 14px;
+    gap: 10px;
+    padding: 9px 14px;
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s;
+    color: var(--lhw-text-dark);
 }
 
-.export-item:hover {
-    background: #f5f5f5;
-}
+.export-item:hover { background: #f3f5f9; }
+.export-icon { width: 18px; height: 18px; }
 
-.export-icon {
-    width: 20px;
-    height: 20px;
-}
-
-.export-header {
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    border-bottom: 1px solid #e5e5e5; /* 👈 line */
-    margin-bottom: 4px;
-}
-
-/* Download button styling */
-.library-hierarchy-widget .btn-download,
-.library-hierarchy-widget .btn-save,
-.library-hierarchy-widget .btn-change {
-    padding: 6px 12px;
-    color: #2d2d2d;
-    border: 1px solid #2d2d2d;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 4px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    background-color: #fff;
-}
-
-/* === Pixel Perfect Compact Alert === */
+/* ── Validation / alert overlay ── */
 .validation-error-overlay {
     position: absolute;
     bottom: 32px;
     right: 20px;
-
-    width: 220px; /* fixed width like screenshot */
+    width: 220px;
     background: #f7931e;
     color: #ffffff;
-
-    padding: 8px 14px;
+    padding: 10px 14px;
     border-radius: 12px;
-
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.18);
     z-index: 1000;
-
     font-family: "Segoe UI", Roboto, Arial, sans-serif;
     animation: slideUp 0.25s ease-out;
 }
 
-/* Header row */
 .validation-error-header {
     display: flex;
     align-items: center;
     gap: 10px;
-
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 6px;
 }
 
-/* Warning icon */
-.validation-error-header .icon {
-    font-size: 18px;
-    line-height: 1;
-}
+.validation-error-header .icon { font-size: 18px; line-height: 1; }
+.validation-error-content      { font-size: 13px; line-height: 1.5; font-weight: 400; }
 
-/* Content text */
-.validation-error-content {
-    font-size: 13px;
-    line-height: 1.5;
-    font-weight: 400;
-}
-
-/* Close button */
 .validation-error-close {
     position: absolute;
-    top: 12px;
-    right: 14px;
-
+    top: 10px;
+    right: 12px;
     background: transparent;
     border: none;
     color: white;
-
     font-size: 18px;
-    font-weight: 300;
     cursor: pointer;
     opacity: 0.9;
 }
+.validation-error-close:hover { opacity: 1; }
 
-.validation-error-close:hover {
-    opacity: 1;
-}
-
-/* Lock Indicator */
+/* ── Lock indicator ── */
 .lock-indicator {
     display: flex;
     align-items: center;
@@ -453,82 +457,83 @@
     padding: 6px 12px;
     background-color: #fff3cd;
     border: 1px solid #ffc107;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 13px;
     color: #856404;
 }
 
-.lock-icon {
-    font-size: 16px;
-}
+.lock-icon  { font-size: 16px; }
+.lock-text  { font-weight: 500; }
+.editable-buttons { display: flex; gap: 8px; }
 
-.lock-text {
-    font-weight: 500;
-}
+.validation-error-overlay.lock-warning { background: #ffc107; color: #000; }
+.validation-error-overlay.lock-warning .validation-error-close { color: #000; }
 
-.editable-buttons {
-    display: flex;
-    gap: 8px;
-}
-/* Lock Warning Overlay */
-.validation-error-overlay.lock-warning {
-    background: #ffc107;
-    color: #000;
-}
-
-.validation-error-overlay.lock-warning .validation-error-close {
-    color: #000;
-}
-
-
-/* Hide palette and context pad completely when locked */
-.library-hierarchy-widget[data-locked="true"] .djs-palette {
-    display: none !important;
-}
-
+/* ── Locked state ── */
+.library-hierarchy-widget[data-locked="true"] .djs-palette,
 .library-hierarchy-widget[data-locked="true"] .djs-context-pad {
     display: none !important;
 }
 
-/* Disable pointer events when locked */
 .library-hierarchy-widget[data-locked="true"] .bpmn-library-container {
     pointer-events: none;
     opacity: 0.8;
     cursor: not-allowed;
 }
 
-/* Custom Open Library Icon */
-.custom-open-library-icon::before {
-    content: "📚" !important;
-    font-size: 16px !important;
+/* ── Open library icon ── */
+/* Applied as className on context pad entry — SVG via background-image */
+.custom-open-library-icon {
+    font-size: 0 !important;        /* suppress any bpmn font glyph */
+    color: transparent !important;
+    width: 20px !important;
+    height: 20px !important;
+    display: inline-block !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232cb5b5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E") !important;
+}
+.custom-open-library-icon:hover,
+.djs-context-pad .entry:hover .custom-open-library-icon {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E") !important;
 }
 
-/* Alternative: Use a visible Unicode character */
-.custom-open-library-icon::after {
-    content: "" !important;
+/* ── Loading / error states ── */
+.library-hierarchy-widget.loading {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
-/* Animation */
+.library-hierarchy-error {
+    padding: 20px;
+    text-align: center;
+    color: #d32f2f;
+    background-color: #ffebee;
+    border: 1px solid #ef5350;
+    border-radius: 6px;
+    margin: 16px;
+}
+
+/* ── Minimap ── */
+.bpmn-library-container .djs-minimap {
+    border: 1px solid var(--lhw-border);
+    background: white;
+    border-radius: 6px;
+}
+
+/* ── Animation ── */
 @keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(15px); }
+    to   { opacity: 1; transform: translateY(0);    }
 }
 
-/* Responsive adjustments */
+/* ── Responsive ── */
 @media (max-width: 768px) {
     .library-hierarchy-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-
-    .btn-save {
-        width: 100%;
-    }
+    .btn-save { width: 100%; }
 }

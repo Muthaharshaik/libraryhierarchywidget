@@ -1,88 +1,87 @@
 class CustomLibraryPalette {
     constructor(bpmnFactory, create, elementFactory, palette, translate, handTool, lassoTool, spaceTool, globalConnect) {
-        this.bpmnFactory = bpmnFactory;
-        this.create = create;
+        this.bpmnFactory    = bpmnFactory;
+        this.create         = create;
         this.elementFactory = elementFactory;
-        this.translate = translate;
-        this.handTool = handTool;
-        this.lassoTool = lassoTool;
-        this.spaceTool = spaceTool;
-        this.globalConnect = globalConnect;
+        this.translate      = translate;
+        this.handTool       = handTool;
+        this.lassoTool      = lassoTool;
+        this.spaceTool      = spaceTool;
+        this.globalConnect  = globalConnect;
 
         palette.registerProvider(this);
     }
 
-    getPaletteEntries(element) {
-        const { bpmnFactory, create, elementFactory, translate, handTool, lassoTool, spaceTool, globalConnect } = this;
+    getPaletteEntries() {
+        const { bpmnFactory, create, elementFactory, handTool, lassoTool, spaceTool, globalConnect } = this;
 
         function createLibrary() {
-            return function (event) {
+            return function(event) {
                 const businessObject = bpmnFactory.create("bpmn:SubProcess", {
                     name: "New Library"
                 });
-
                 businessObject.set("library:libraryName", "New Library");
-                businessObject.set("library:libraryId", `lib_${Date.now()}`);
+                businessObject.set("library:libraryId",   `lib_${Date.now()}`);
 
                 const shape = elementFactory.createShape({
                     type: "bpmn:SubProcess",
-                    businessObject: businessObject,
-                    width:260,
-                    height:60
+                    businessObject,
+                    width:  260,
+                    height: 60
                 });
-
                 create.start(event, shape);
             };
         }
 
         return {
+            // ── Navigation tools ──────────────────────────────────────────
             "hand-tool": {
-                group: "tools",
+                group:     "tools",
                 className: "bpmn-icon-hand-tool",
-                title: "Move",
+                title:     "Move",
                 action: {
-                    click: function(event) {
-                        handTool.activateHand(event);
-                    }
+                    click(event) { handTool.activateHand(event); }
                 }
             },
             "lasso-tool": {
-                group: "tools",
+                group:     "tools",
                 className: "bpmn-icon-lasso-tool",
-                title: "Lasso",
+                title:     "Lasso",
                 action: {
-                    click: function(event) {
-                        lassoTool.activateSelection(event);
-                    }
+                    click(event) { lassoTool.activateSelection(event); }
                 }
             },
             "space-tool": {
-                group: "tools",
+                group:     "tools",
                 className: "bpmn-icon-space-tool",
-                title: "Space",
+                title:     "Space",
                 action: {
-                    click: function(event) {
-                        spaceTool.activateSelection(event);
-                    }
+                    click(event) { spaceTool.activateSelection(event); }
                 }
             },
             "global-connect-tool": {
-                group: "tools",
+                group:     "tools",
                 className: "bpmn-icon-connection-multi",
-                title: "Connect",
+                title:     "Connect",
                 action: {
-                    click: function(event) {
-                        globalConnect.start(event);
-                    }
+                    click(event) { globalConnect.start(event); }
                 }
             },
+
+            // ── Separator ─────────────────────────────────────────────────
+            "tool-separator": {
+                group:     "tools",
+                separator: true
+            },
+
+            // ── Create library ────────────────────────────────────────────
             "create.library": {
-                group: "library",
+                group:     "library",
                 className: "bpmn-icon-task",
-                title: "Library",
+                title:     "Add Library",
                 action: {
                     dragstart: createLibrary(),
-                    click: createLibrary()
+                    click:     createLibrary()
                 }
             }
         };
