@@ -130,7 +130,7 @@ class CustomLibraryRenderer extends BaseRenderer {
             "dominant-baseline": "auto",
             "pointer-events":    "none"
         });
-        subEl.textContent = isRoot ? "Framework Root" : `Library \u2022 Level ${depth}`;
+        subEl.textContent = isRoot ? "Framework Root" : "Library";
         svgAppend(parentNode, subEl);
 
         return baseShape;
