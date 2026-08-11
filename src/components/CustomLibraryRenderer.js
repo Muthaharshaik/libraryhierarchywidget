@@ -4,61 +4,53 @@ import { is } from "bpmn-js/lib/util/ModelUtil";
 
 const HIGH_PRIORITY = 1500;
 
-// ── Design tokens (Figma) ────────────────────────────────────────────────────
-const ROOT_BG        = "#1e2d4a";   // dark navy — root node
-const ROOT_DECOR     = "#2e3f5e";   // decorative circle on root
+const ROOT_BG        = "#1e2d4a";
+const ROOT_DECOR     = "#2e3f5e";
 const ROOT_TITLE     = "#ffffff";
 const ROOT_SUBTITLE  = "#8fa3bf";
 
-const CHILD_BG       = "#ffffff";   // white — child library
-const CHILD_BORDER   = "#2cb5b5";   // teal border
-const CHILD_DECOR    = "#f5e6d0";   // warm cream decorative circle
-const CHILD_TITLE    = "#1a2744";   // dark navy text
-const CHILD_SUBTITLE = "#6b7a99";   // muted blue-grey
+const CHILD_BG       = "#ffffff";
+const CHILD_BORDER   = "#2cb5b5";
+const CHILD_DECOR    = "#f5e6d0";
+const CHILD_TITLE    = "#1a2744";
+const CHILD_SUBTITLE = "#6b7a99";
 
-const NODE_RADIUS    = 10;
-const NODE_SHADOW    = "rgba(30,45,74,0.18)";
+const NODE_RADIUS = 10;
+const NODE_SHADOW = "rgba(30,45,74,0.18)";
 
-// ── Helper: compute depth from incoming connections ──────────────────────────
-function getDepth(element) {
-    let depth = 0;
-    let current = element;
-    const visited = new Set();
-    while (current && !visited.has(current.id)) {
-        visited.add(current.id);
-        const incoming = current.incoming || [];
-        if (!incoming.length) break;
-        const parentConn = incoming[0];
-        current = parentConn && parentConn.source;
-        depth++;
-        if (depth > 20) break;
-    }
-    return depth;
+function getDirectChildren(element) {
+    return (element.outgoing || [])
+        .filter(conn => conn.type === "bpmn:SequenceFlow")
+        .map(conn => conn.target)
+        .filter(Boolean);
 }
 
 class CustomLibraryRenderer extends BaseRenderer {
     constructor(eventBus, bpmnRenderer) {
         super(eventBus, HIGH_PRIORITY);
         this.bpmnRenderer = bpmnRenderer;
+        this.eventBus     = eventBus;
     }
 
     canRender(element) {
         return (
             is(element, "bpmn:SubProcess") &&
             element.businessObject.get &&
-            element.businessObject.get("library:libraryName")
+            (element.businessObject.get("library:libraryName") ||
+             element.businessObject.get("library:libraryId"))
         );
     }
 
     drawShape(parentNode, element) {
         const { width, height } = element;
         const bo          = element.businessObject;
-        const libraryName = bo.get("library:libraryName") || bo.name || "";
+        // bo.name is the source of truth — direct editing (dbl-click rename) writes
+        // only bo.name, so reading libraryName first would paint a stale label.
+        const libraryName = bo.name || bo.get("library:libraryName") || "";
         const libraryId   = bo.get("library:libraryId")   || "";
         const isRoot      = libraryId === "root";
-        const depth       = isRoot ? 0 : getDepth(element);
 
-        // 1. Render base shape then hide it (bpmn-js internals need it)
+        // 1. Render base shape then hide it
         const baseShape = this.bpmnRenderer.drawShape(parentNode, element);
         svgAttr(baseShape, { stroke: "none", fill: "none", "stroke-width": 0 });
 
@@ -70,7 +62,7 @@ class CustomLibraryRenderer extends BaseRenderer {
         </filter>`;
         svgAppend(parentNode, defsF);
 
-        // 3. Clip path (rounded rect) — keeps decorative circle inside card
+        // 3. Clip path
         const clipId = `lib-clip-${element.id}`;
         const defsC = svgCreate("defs");
         defsC.innerHTML = `<clipPath id="${clipId}">
@@ -91,7 +83,7 @@ class CustomLibraryRenderer extends BaseRenderer {
         });
         svgAppend(parentNode, card);
 
-        // 5. Decorative circle — top-right corner, clipped
+        // 5. Decorative circle
         const cR = Math.round(height * 0.52);
         const circ = svgCreate("circle");
         svgAttr(circ, {
@@ -133,9 +125,12 @@ class CustomLibraryRenderer extends BaseRenderer {
         subEl.textContent = isRoot ? "Framework Root" : "Library";
         svgAppend(parentNode, subEl);
 
+        // NOTE: Toggle button is NO LONGER rendered here.
+        // It is added via bpmn-js Overlays in LibraryHierarchyWidget.jsx
+        // after importXML completes. This avoids the djs-visual clipping issue.
+
         return baseShape;
     }
-    // No drawConnection / canRenderConnection — bpmn-js default arrows are used as-is
 }
 
 CustomLibraryRenderer.$inject = ["eventBus", "bpmnRenderer"];

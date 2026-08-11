@@ -21,6 +21,8 @@
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: var(--lhw-bg);
+    border: 1px solid var(--lhw-border);
+    border-radius: 4px;
 }
 
 /* ── Header ── */
@@ -29,8 +31,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 16px;
-    background-color: var(--lhw-header-bg);
-    border-bottom: 1px solid var(--lhw-border);
+    background-color:#eeefff;
+    border-bottom: 1.5px solid #eeefff;
 }
 
 .library-hierarchy-header h3 {
@@ -286,9 +288,6 @@
     flex-direction: row !important;
     gap: 4px !important;
     padding: 4px !important;
-}
-.library-hierarchy-widget .bpmn-library-container .djs-context-pad {
-  width:100px !important;
 }
 
 .bpmn-library-container .djs-context-pad .group {

@@ -1,15 +1,20 @@
 import { createElement, useEffect, useRef, useCallback, useState } from "react";
 import BpmnModeler from "bpmn-js/lib/Modeler";
 import "./ui/LibraryHierarchyWidget.css";
-import downloadIcon from "./assets/download-svgrepo-com.svg"
-import saveIcon from "./assets/save-svgrepo-com.svg"
-import undoIcon from "./assets/undo-svgrepo-com.svg"
-import redoIcon from "./assets/redo-svgrepo-com.svg"
-import dotsIcon from "./assets/three-dots-svgrepo-com.svg"
-import pdfIcon from "./assets/document-svgrepo-com.svg"
-import svgIcon from "./assets/image-svgrepo-com.svg"
-import htmlIcon from "./assets/html-tag-svgrepo-com.svg"
-import printIcon from "./assets/print-svgrepo-com.svg"
+import downloadIcon from "./assets/download-svgrepo-com.svg";
+import saveIcon     from "./assets/save-svgrepo-com.svg";
+import undoIcon     from "./assets/undo-svgrepo-com.svg";
+import redoIcon     from "./assets/redo-svgrepo-com.svg";
+import dotsIcon     from "./assets/three-dots-svgrepo-com.svg";
+import pdfIcon      from "./assets/document-svgrepo-com.svg";
+import svgIcon      from "./assets/image-svgrepo-com.svg";
+import htmlIcon     from "./assets/html-tag-svgrepo-com.svg";
+import printIcon    from "./assets/print-svgrepo-com.svg";
+
+// ── Toggle button colours ─────────────────────────────────────────────────────
+const TOGGLE_BG_EXPANDED  = "#2cb5b5";
+const TOGGLE_BG_COLLAPSED = "#e07b3a";
+const TOGGLE_SIZE         = 22;
 
 export function LibraryHierarchyWidget(props) {
     const {
@@ -23,114 +28,277 @@ export function LibraryHierarchyWidget(props) {
         lockedUserEmail
     } = props;
 
-    const containerRef = useRef(null);
-    const modelerRef = useRef(null);
+    const containerRef       = useRef(null);
+    const modelerRef         = useRef(null);
     const lastImportedXmlRef = useRef(null);
-    const actionRef = useRef(null);
+    const actionRef          = useRef(null);
     const [pendingLibraryId, setPendingLibraryId] = useState(null);
-    const [showExportMenu, setShowExportMenu] = useState(false);
+    const [showExportMenu, setShowExportMenu]     = useState(false);
     const exportRef = useRef(null);
 
-    // Determine if current user can edit
-    // Determine if current user can edit
+    // Collapse state: Map<elementId, boolean> — true = collapsed
+    const collapseStateRef = useRef(new Map());
+
+    // ── Lock check ────────────────────────────────────────────────────────────
     const isLockedByAnotherUser = useCallback(() => {
-        // Wait for values to load
-        if (currentUserEmail?.status === "loading" || 
-            lockedUserEmail?.status === "loading") {
-            return true; // Block while loading
-        }
+        if (currentUserEmail?.status === "loading" ||
+            lockedUserEmail?.status === "loading") return true;
+        if (!lockedUserEmail?.value || !lockedUserEmail.value.trim()) return true;
+        if (!currentUserEmail?.value || !currentUserEmail.value.trim()) return true;
+        return currentUserEmail.value.toLowerCase().trim() !==
+               lockedUserEmail.value.toLowerCase().trim();
+    }, [currentUserEmail?.value, currentUserEmail?.status,
+        lockedUserEmail?.value,  lockedUserEmail?.status]);
 
-        // ✅ NEW LOGIC: If no one is checked out (empty), EVERYONE is read-only
-        if (!lockedUserEmail?.value || !lockedUserEmail.value.trim()) {
-            return true; // No checkout = read-only for all
-        }
-        
-        // If current user email not available, block
-        if (!currentUserEmail?.value || !currentUserEmail.value.trim()) {
-            return true;
-        }
-        
-        // Compare emails - only the checked-out user can edit
-        const currentEmail = currentUserEmail.value.toLowerCase().trim();
-        const lockedEmail = lockedUserEmail.value.toLowerCase().trim();
-        
-        // If current user IS the checked-out user, they can edit
-        return currentEmail !== lockedEmail;
-    }, [currentUserEmail?.value, currentUserEmail?.status, 
-        lockedUserEmail?.value, lockedUserEmail?.status]);
-
-    // Computed readonly state
     const isReadOnly = readOnly || isLockedByAnotherUser();
 
+    // ── Default XML ───────────────────────────────────────────────────────────
     const generateDefaultXML = (name) => {
-        const frameworkNameValue = name || "Framework Root";
+        const n = name || "Framework Root";
         return `<?xml version="1.0" encoding="UTF-8"?>
-    <bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-                    xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
-                    xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
-                    xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
-                    xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                    xmlns:library="http://lowcodelabs/schema/library"
-                    id="Definitions_1" 
-                    targetNamespace="http://bpmn.io/schema/bpmn">
-    <bpmn:process id="Process_1" isExecutable="false">
-    <bpmn:subProcess id="SubProcess_Root" name="${frameworkNameValue}" library:libraryId="root" library:libraryName="${frameworkNameValue}">
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:library="http://lowcodelabs/schema/library"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_1" isExecutable="false">
+    <bpmn:subProcess id="SubProcess_Root" name="${n}"
+                     library:libraryId="root"
+                     library:libraryName="${n}">
     </bpmn:subProcess>
-    </bpmn:process>
-    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
       <bpmndi:BPMNShape id="SubProcess_Root_di" bpmnElement="SubProcess_Root">
-            <dc:Bounds x="200" y="100" width="260" height="60"/>
-        </bpmndi:BPMNShape>
-        </bpmndi:BPMNPlane>
-    </bpmndi:BPMNDiagram>
-    </bpmn:definitions>`;
+        <dc:Bounds x="200" y="100" width="260" height="60"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
     };
 
-    // Watch for when attribute is ready
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function getDirectChildren(element) {
+        return (element.outgoing || [])
+            .filter(c => c.type === "bpmn:SequenceFlow")
+            .map(c => c.target)
+            .filter(Boolean);
+    }
+
+    function collectDescendants(element, collapseState) {
+        const nodeIds       = new Set();
+        const connectionIds = new Set();
+        const queue         = [...getDirectChildren(element)];
+        while (queue.length) {
+            const child = queue.shift();
+            if (!child || nodeIds.has(child.id)) continue;
+            nodeIds.add(child.id);
+            (child.incoming || [])
+                .filter(c => c.type === "bpmn:SequenceFlow")
+                .forEach(c => connectionIds.add(c.id));
+            if (!collapseState.get(child.id)) {
+                queue.push(...getDirectChildren(child));
+            }
+        }
+        return { nodeIds, connectionIds };
+    }
+
+    function setElementVisibility(container, elementId, visible) {
+        const gfx = container.querySelector(`[data-element-id="${elementId}"]`);
+        if (gfx) gfx.style.display = visible ? "" : "none";
+    }
+
+    // FIX 1 — hide/show overlay buttons alongside their shapes
+    function setOverlayVisibility(container, elementId, visible) {
+        const searchRoot = container.closest(".bjs-container") || container;
+        const btn = searchRoot.querySelector(
+            `button[data-collapse-id="${elementId}"]`
+        );
+        if (btn) {
+            const overlayDiv = btn.closest(".djs-overlay");
+            if (overlayDiv) overlayDiv.style.display = visible ? "" : "none";
+        }
+    }
+
+    // ── Build toggle button ───────────────────────────────────────────────────
+    const buildToggleButton = (elementId, isCollapsed, childCount) => {
+        const btn = document.createElement("button");
+        btn.setAttribute("data-collapse-id", elementId);
+        const bg   = isCollapsed ? TOGGLE_BG_COLLAPSED : TOGGLE_BG_EXPANDED;
+        const icon = isCollapsed ? `▶ ${childCount}` : "▼";
+        btn.style.cssText = `
+            width: ${TOGGLE_SIZE}px;
+            height: ${TOGGLE_SIZE}px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            background: ${bg};
+            color: #ffffff;
+            font-size: ${isCollapsed ? "7px" : "10px"};
+            font-weight: 700;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            transition: opacity 0.15s;
+            pointer-events: all;
+        `;
+        btn.textContent = icon;
+        btn.addEventListener("mouseenter", () => { btn.style.opacity = "0.8"; });
+        btn.addEventListener("mouseleave", () => { btn.style.opacity = "1"; });
+        return btn;
+    };
+
+    // ── Refresh overlays ──────────────────────────────────────────────────────
+    const refreshOverlays = useCallback((modeler) => {
+        if (!modeler) return;
+        const overlays        = modeler.get("overlays");
+        const elementRegistry = modeler.get("elementRegistry");
+        const collapseState   = collapseStateRef.current;
+
+        try { overlays.remove({ type: "collapse-toggle" }); } catch (_) {}
+
+        // FIX 2 — build set of all hidden node IDs, skip overlays for them
+        const hiddenIds = new Set();
+        elementRegistry.getAll().forEach(element => {
+            if (collapseState.get(element.id) === true) {
+                const { nodeIds } = collectDescendants(element, collapseState);
+                nodeIds.forEach(id => hiddenIds.add(id));
+            }
+        });
+
+        elementRegistry.getAll().forEach(element => {
+            if (element.type !== "bpmn:SubProcess") return;
+            if (!element.businessObject.get("library:libraryId") &&
+                !element.businessObject.get("library:libraryName")) return;
+
+            const children = getDirectChildren(element);
+            if (children.length === 0) return;
+
+            // Skip nodes that are hidden inside a collapsed parent
+            if (hiddenIds.has(element.id)) return;
+
+            const isCollapsed = collapseState.get(element.id) === true;
+            const btn = buildToggleButton(element.id, isCollapsed, children.length);
+
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                handleToggleCollapse(element.id, modeler);
+            });
+
+            overlays.add(element.id, "collapse-toggle", {
+                position: {
+                    bottom: 4,
+                    left:   element.width / 2 - TOGGLE_SIZE / 2
+                },
+                html: btn
+            });
+        });
+    }, []);
+
+    // ── Core collapse / expand ────────────────────────────────────────────────
+    const handleToggleCollapse = useCallback((elementId, modeler) => {
+        const mod = modeler || modelerRef.current;
+        if (!mod) return;
+
+        const elementRegistry = mod.get("elementRegistry");
+        const container       = containerRef.current;
+        const collapseState   = collapseStateRef.current;
+
+        const element = elementRegistry.get(elementId);
+        if (!element) return;
+
+        const wasCollapsed = collapseState.get(elementId) === true;
+        const nowCollapsed = !wasCollapsed;
+        collapseState.set(elementId, nowCollapsed);
+
+        if (nowCollapsed) {
+            // FIX 1 — hide overlay buttons alongside shapes
+            const { nodeIds, connectionIds } = collectDescendants(element, collapseState);
+            nodeIds.forEach(id => {
+                setElementVisibility(container, id, false);
+                setOverlayVisibility(container, id, false);
+            });
+            connectionIds.forEach(id => setElementVisibility(container, id, false));
+            (element.outgoing || [])
+                .filter(c => c.type === "bpmn:SequenceFlow")
+                .forEach(c => setElementVisibility(container, c.id, false));
+        } else {
+            // FIX 3 — recursively restore descendants, respecting each node's own collapse state
+            const restoreDescendants = (el) => {
+                const children = getDirectChildren(el);
+                children.forEach(child => {
+                    setElementVisibility(container, child.id, true);
+                    (child.incoming || [])
+                        .filter(c => c.type === "bpmn:SequenceFlow" && c.source?.id === el.id)
+                        .forEach(c => setElementVisibility(container, c.id, true));
+                    setOverlayVisibility(container, child.id, true);
+                    if (!collapseState.get(child.id)) {
+                        restoreDescendants(child);
+                    }
+                });
+            };
+
+            restoreDescendants(element);
+
+            (element.outgoing || [])
+                .filter(c => c.type === "bpmn:SequenceFlow")
+                .forEach(c => setElementVisibility(container, c.id, true));
+        }
+
+        refreshOverlays(mod);
+    }, [refreshOverlays]);
+
+    // ── Pending navigation ────────────────────────────────────────────────────
     useEffect(() => {
-        if (pendingLibraryId && 
-            clickedLibraryId && 
+        if (pendingLibraryId &&
+            clickedLibraryId &&
             clickedLibraryId.status === "available") {
-            
-            console.info('Setting pending library ID:', pendingLibraryId);
             clickedLibraryId.setValue(pendingLibraryId);
-            
-            // Execute action
             setTimeout(() => {
                 if (actionRef.current && actionRef.current.canExecute) {
                     actionRef.current.execute();
                 }
-                // Clear pending
                 setPendingLibraryId(null);
             }, 100);
         }
     }, [pendingLibraryId, clickedLibraryId?.status]);
 
-    useEffect(() => {
-        actionRef.current = onLibraryClick;
-    }, [onLibraryClick]);
+    useEffect(() => { actionRef.current = onLibraryClick; }, [onLibraryClick]);
 
-    /**
-     * Initialize the BPMN Modeler with custom modules
-     */
+    // ── Modeler init ──────────────────────────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current) return;
 
-        // Destroy existing modeler if any
+        collapseStateRef.current = new Map();
+
         if (modelerRef.current) {
             modelerRef.current.destroy();
             modelerRef.current = null;
         }
 
+        const CustomPaletteProvider   = require("./components/CustomPaletteProvider");
+        const CustomLibraryPalette    = require("./components/CustomLibraryPalette");
+        const CustomLibraryRendererMod= require("./components/CustomLibraryRenderer");
+        const CustomLibraryRules      = require("./components/CustomLibraryRules");
+        const CustomLibraryContextPad = require("./components/CustomLibraryContextPad");
+        const CustomLibraryNameSync   = require("./components/CustomLibraryNameSync");
+
         const modeler = new BpmnModeler({
             container: containerRef.current,
             additionalModules: [
-                require("./components/CustomPaletteProvider"), 
-                require("./components/CustomLibraryPalette"),
-                require("./components/CustomLibraryRenderer"),
-                require("./components/CustomLibraryRules"),
-                require("./components/CustomLibraryContextPad")
+                CustomPaletteProvider,
+                CustomLibraryPalette,
+                CustomLibraryRendererMod,
+                CustomLibraryRules,
+                CustomLibraryContextPad,
+                CustomLibraryNameSync
             ],
             moddleExtensions: {
                 library: require("./components/libraryModdle").libraryModdle
@@ -139,422 +307,265 @@ export function LibraryHierarchyWidget(props) {
 
         modelerRef.current = modeler;
 
-        // Import initial XML
         const xmlToLoad = libraryXML?.value || generateDefaultXML(frameworkName?.value);
         lastImportedXmlRef.current = xmlToLoad;
 
         modeler
             .importXML(xmlToLoad)
             .then(({ warnings }) => {
-                if (warnings.length) {
-                    console.warn("BPMN Import Warnings:", warnings);
-                }
+                if (warnings.length) console.warn("BPMN Import Warnings:", warnings);
 
-                const canvas = modeler.get("canvas");
+                const canvas   = modeler.get("canvas");
+                const eventBus = modeler.get("eventBus");
                 canvas.zoom("fit-viewport");
 
-                // Disable editing if read-only or locked
+                refreshOverlays(modeler);
+
+                eventBus.on("elements.changed",  () => refreshOverlays(modeler));
+                eventBus.on("shape.added",        () => refreshOverlays(modeler));
+                eventBus.on("connection.added",   () => refreshOverlays(modeler));
+                eventBus.on("shape.removed",      () => refreshOverlays(modeler));
+                eventBus.on("connection.removed", () => refreshOverlays(modeler));
+
                 if (isReadOnly) {
-                    const eventBus = modeler.get('eventBus');
-                    
-                    // Block all modeling operations
-                    eventBus.on('commandStack.execute', 10000, (event) => {
-                        if (isReadOnly) {
-                            event.stopPropagation();
-                            return false;
-                        }
+                    eventBus.on("commandStack.execute", 10000, (event) => {
+                        event.stopPropagation();
+                        return false;
                     });
                 }
 
-                // Set up event listeners
-                const eventBus = modeler.get("eventBus");
-                eventBus.on('library.unsaved-warning', () => {
-                    showUnsavedWarning();
+                eventBus.on("library.unsaved-warning", () => showUnsavedWarning());
+
+                eventBus.on("library.open", (event) => {
+                    setPendingLibraryId(event.libraryId);
                 });
 
-                // ⭐ ADD THIS: Listen for "Open Library" from context pad
-                eventBus.on('library.open', (event) => {
-                    const libraryId = event.libraryId;
-                    console.info('Opening library from context pad:', libraryId);
-                    setPendingLibraryId(libraryId);
-                });
-                
                 eventBus.on("element.dblclick", (event) => {
                     const { element } = event;
-
                     if (element.type === "bpmn:SubProcess" &&
                         element.businessObject.get("library:libraryId")) {
-
-                        // ✅ If user CAN edit (checked out by them), allow inline editing
                         if (!isReadOnly) {
-                            // Enable direct editing (rename)
-                            const directEditing = modeler.get("directEditing");
-                            directEditing.activate(element);
+                            modeler.get("directEditing").activate(element);
                             return;
                         }
-
-                        // ✅ If user CANNOT edit, prevent editing and navigate
                         event.stopPropagation();
                         event.preventDefault();
-                        
-                        // Cancel any editing that might have started
-                        const directEditing = modeler.get("directEditing");
-                        directEditing.cancel();
-                        
-                        const libraryId = element.businessObject.get("library:libraryId");
-                        console.info('Library clicked (read-only):', libraryId);
-                        setPendingLibraryId(libraryId);
+                        modeler.get("directEditing").cancel();
+                        setPendingLibraryId(element.businessObject.get("library:libraryId"));
                     }
                 });
-
-                //if the client wants Auto save instead of manually saving we can comment out this
-                // // Listen for changes to auto-save (only if editable)
-                // if (onSaveXML && onSaveXML.canExecute && !isReadOnly) {
-                //     eventBus.on("commandStack.changed", () => {
-                //         exportAndSaveXML();
-                //     });
-                // }
             })
-            .catch(err => {
-                console.error("Error importing BPMN diagram:", err);
-            });
+            .catch(err => console.error("Error importing BPMN diagram:", err));
 
-        // Cleanup on unmount
         return () => {
-            if (modelerRef.current) {
-                modelerRef.current.destroy();
-            }
+            if (modelerRef.current) modelerRef.current.destroy();
         };
-    }, [isReadOnly]); // Re-initialize when lock status changes
+    }, [isReadOnly]);
 
-    /**
-     * Update root library name when frameworkName changes
-     */
+    // ── Framework name update ─────────────────────────────────────────────────
     useEffect(() => {
         if (!modelerRef.current) return;
         if (!frameworkName?.value) return;
         if (libraryXML?.value) return;
-
-        const elementRegistry = modelerRef.current.get('elementRegistry');
-        const modeling = modelerRef.current.get('modeling');
-        const rootElement = elementRegistry.get('SubProcess_Root');
-        
+        const elementRegistry = modelerRef.current.get("elementRegistry");
+        const modeling        = modelerRef.current.get("modeling");
+        const rootElement     = elementRegistry.get("SubProcess_Root");
         if (rootElement) {
             modeling.updateProperties(rootElement, {
                 name: frameworkName.value,
-                'library:libraryName': frameworkName.value
+                "library:libraryName": frameworkName.value
             });
         }
     }, [frameworkName?.value, libraryXML?.value]);
 
-    /**
-     * Handle XML updates from Mendix
-     */
+    // ── XML updates from Mendix ───────────────────────────────────────────────
     useEffect(() => {
         if (!modelerRef.current) return;
         if (!libraryXML?.value) return;
+        if (libraryXML.value === lastImportedXmlRef.current) return;
 
-        if (libraryXML.value === lastImportedXmlRef.current) {
-            return;
-        }
-
-        console.log("Importing new library hierarchy XML");
         lastImportedXmlRef.current = libraryXML.value;
+        collapseStateRef.current   = new Map();
 
         modelerRef.current
             .importXML(libraryXML.value)
             .then(() => {
-                const canvas = modelerRef.current.get("canvas");
-                canvas.zoom("fit-viewport");
+                modelerRef.current.get("canvas").zoom("fit-viewport");
+                refreshOverlays(modelerRef.current);
             })
-            .catch(err => {
-                console.error("Error updating BPMN diagram:", err);
-            });
+            .catch(err => console.error("Error updating BPMN diagram:", err));
     }, [libraryXML?.value]);
 
+    // ── Close export menu on outside click ───────────────────────────────────
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (exportRef.current && !exportRef.current.contains(event.target)) {
+        const handleClickOutside = (e) => {
+            if (exportRef.current && !exportRef.current.contains(e.target)) {
                 setShowExportMenu(false);
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    /**
-     * Validate diagram before saving
-     */
+    // ── Validation ────────────────────────────────────────────────────────────
     const validateDiagram = useCallback(() => {
         if (!modelerRef.current) return { valid: true, errors: [] };
-
-        const elementRegistry = modelerRef.current.get('elementRegistry');
         const errors = [];
-        const allElements = elementRegistry.getAll();
-        
-        allElements.forEach(element => {
-            if (element.type === 'bpmn:SubProcess' && 
-                element.businessObject.get('library:libraryId')) {
-                
-                const incomingCount = element.incoming ? element.incoming.length : 0;
-                
-                if (incomingCount > 1) {
+        modelerRef.current.get("elementRegistry").getAll().forEach(element => {
+            if (element.type === "bpmn:SubProcess" &&
+                element.businessObject.get("library:libraryId")) {
+                if ((element.incoming || []).length > 1) {
                     errors.push("A library must not have more than one parent library.");
                 }
             }
         });
-        
-        return {
-            valid: errors.length === 0,
-            errors: errors
-        };
+        return { valid: errors.length === 0, errors };
     }, []);
 
-    /**
-     * Export current diagram as XML and save to Mendix
-     */
+    // ── Save ──────────────────────────────────────────────────────────────────
     const exportAndSaveXML = useCallback(() => {
         if (!modelerRef.current || !onSaveXML || !onSaveXML.canExecute) return;
-        if (isReadOnly) return; // Don't save if locked
-
+        if (isReadOnly) return;
         const validation = validateDiagram();
-        
-        if (!validation.valid) {
-            showValidationError(validation.errors);
-            return;
-        }
-
+        if (!validation.valid) { showValidationError(validation.errors); return; }
         modelerRef.current
             .saveXML({ format: true })
-            .then(({ xml }) => {
-                libraryXML?.setValue(xml);
-                onSaveXML.execute();
-            })
-            .catch(err => {
-                console.error("Error exporting BPMN XML:", err);
-            });
+            .then(({ xml }) => { libraryXML?.setValue(xml); onSaveXML.execute(); })
+            .catch(err => console.error("Error exporting BPMN XML:", err));
     }, [libraryXML, onSaveXML, validateDiagram, isReadOnly]);
 
-    /**
-     * Show validation errors
-     */
+    // ── Validation overlay ────────────────────────────────────────────────────
     const showValidationError = useCallback((errors) => {
         if (!containerRef.current) return;
-        
-        const existingErrors = containerRef.current.querySelectorAll('.validation-error-overlay');
-        existingErrors.forEach(error => error.remove());
-        
-        const overlay = document.createElement('div');
-        overlay.className = 'validation-error-overlay';
-        
-        const errorHeader = document.createElement('div');
-        errorHeader.className = 'validation-error-header';
-        errorHeader.innerHTML = `
-            <span class="icon">⚠️</span>
-            <span>Alert</span>
-        `;
-        
-        const errorContent = document.createElement('div');
-        errorContent.className = 'validation-error-content';
-        errors.forEach(error => {
-            const errorLine = document.createElement('div');
-            errorLine.textContent = error;
-            errorLine.style.marginBottom = '8px';
-            errorContent.appendChild(errorLine);
+        containerRef.current.querySelectorAll(".validation-error-overlay")
+            .forEach(e => e.remove());
+        const overlay     = document.createElement("div");
+        overlay.className = "validation-error-overlay";
+        const header      = document.createElement("div");
+        header.className  = "validation-error-header";
+        header.innerHTML  = `<span class="icon">⚠️</span><span>Alert</span>`;
+        const content     = document.createElement("div");
+        content.className = "validation-error-content";
+        errors.forEach(err => {
+            const line = document.createElement("div");
+            line.textContent       = err;
+            line.style.marginBottom = "8px";
+            content.appendChild(line);
         });
-        
-        const closeButton = document.createElement('button');
-        closeButton.className = 'validation-error-close';
-        closeButton.innerHTML = '×';
-        
-        overlay.appendChild(closeButton);
-        overlay.appendChild(errorHeader);
-        overlay.appendChild(errorContent);
-        
+        const close       = document.createElement("button");
+        close.className   = "validation-error-close";
+        close.innerHTML   = "×";
+        overlay.appendChild(close);
+        overlay.appendChild(header);
+        overlay.appendChild(content);
         containerRef.current.appendChild(overlay);
-
-        const timeout = setTimeout(() => {
-            overlay.remove();
-        }, 4000);
-        
-        closeButton.onclick = () => {
-            clearTimeout(timeout);
-            overlay.remove();
-        };
+        const t = setTimeout(() => overlay.remove(), 4000);
+        close.onclick = () => { clearTimeout(t); overlay.remove(); };
     }, []);
 
-    /**
-     * Handle Undo
-     */
+    // ── Undo / Redo ───────────────────────────────────────────────────────────
     const handleUndo = useCallback(() => {
         if (!modelerRef.current || isReadOnly) return;
-        const commandStack = modelerRef.current.get('commandStack');
-        if (commandStack.canUndo()) {
-            commandStack.undo();
-        }
+        const cs = modelerRef.current.get("commandStack");
+        if (cs.canUndo()) cs.undo();
     }, [isReadOnly]);
 
-    /**
-     * Handle Redo
-     */
     const handleRedo = useCallback(() => {
         if (!modelerRef.current || isReadOnly) return;
-        const commandStack = modelerRef.current.get('commandStack');
-        if (commandStack.canRedo()) {
-            commandStack.redo();
-        }
+        const cs = modelerRef.current.get("commandStack");
+        if (cs.canRedo()) cs.redo();
     }, [isReadOnly]);
 
+    // ── Unsaved warning ───────────────────────────────────────────────────────
     const showUnsavedWarning = () => {
         if (!containerRef.current) return;
-
-        const overlay = document.createElement("div");
+        const overlay     = document.createElement("div");
         overlay.className = "validation-error-overlay";
         overlay.innerHTML = `
-            <div class="validation-error-header">
-                <span>⚠️ Unsaved Changes</span>
-            </div>
-            <div class="validation-error-content">
-                Please save the framework before opening a library.
-            </div>
-        `;
-
+            <div class="validation-error-header"><span>⚠️ Unsaved Changes</span></div>
+            <div class="validation-error-content">Please save the framework before opening a library.</div>`;
         containerRef.current.appendChild(overlay);
-
-        setTimeout(() => {
-            overlay.remove();
-        }, 5000);
+        setTimeout(() => overlay.remove(), 5000);
     };
 
-    /**
-     * Download current diagram as BPMN file
-     */
+    // ── Download BPMN ─────────────────────────────────────────────────────────
     const downloadBPMN = useCallback(() => {
         if (!modelerRef.current) return;
-
-        modelerRef.current
-            .saveXML({ format: true })
-            .then(({ xml }) => {
-                const blob = new Blob([xml], { type: 'application/bpmn+xml' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                
-                const fileName = frameworkName?.value 
-                    ? `${frameworkName.value.replace(/\s+/g, '_')}_Library_Hierarchy.bpmn`
-                    : 'Library_Hierarchy.bpmn';
-                
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            })
-            .catch(err => {
-                console.error("Error downloading BPMN:", err);
-            });
+        modelerRef.current.saveXML({ format: true }).then(({ xml }) => {
+            const blob = new Blob([xml], { type: "application/bpmn+xml" });
+            const url  = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href  = url;
+            link.download = frameworkName?.value
+                ? `${frameworkName.value.replace(/\s+/g, "_")}_Library_Hierarchy.bpmn`
+                : "Library_Hierarchy.bpmn";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }).catch(err => console.error("Error downloading BPMN:", err));
     }, [frameworkName]);
 
-return (
-    <div className="library-hierarchy-widget" data-locked={isLockedByAnotherUser()}>
-        <div className="library-hierarchy-header">
-            <h3 style={{visibility:'hidden'}}>{frameworkName?.value || "Library Hierarchy"}</h3>
-            
-            {/* Show full buttons if NOT locked, only export if locked */}
-            <div className="header-buttons">
-                {!isReadOnly && (
-                    <div className="editable-buttons">
-                        <button 
-                            className="btn-save"
-                            onClick={exportAndSaveXML}
-                        >
-                            <span>
-                                <img src={saveIcon} alt="SaveFramework" style={{width:'18px',height:'18px', position:'relative', top:'-1.5px'}}></img>
-                                Save Framework
-                            </span>
-                        </button>
-
-                        <button
-                           className="btn-change"
-                           onClick={handleUndo}
-                           title="Undo"
-                        >
-                            <img src={undoIcon} alt="Undo Changes" style={{width:'16px', height:'16px'}}/>
-                        </button>
-
-                        <button
-                           className="btn-change"
-                           onClick={handleRedo}
-                           title="Redo"
-                        >
-                            <img src={redoIcon} alt="Redo Changes" style={{width:'16px', height:'16px'}}/>
-                        </button>
-                    </div>
-                )}
-                
-                {/* Export menu - always visible */}
-                <div className="export-wrapper" ref={exportRef}>
-                    <button
-                        className="btn-change"
-                        onClick={() => setShowExportMenu(prev => !prev)}
-                        title="Export"
-                    >
-                        <img
-                            src={dotsIcon}
-                            alt="Export"
-                            style={{ width: "16px", height: "16px" }}
-                        />
-                    </button>
-
-                    {showExportMenu && (
-                        <div className="export-dropdown">
-                             <div className="export-header">Export as</div>
-                                <div
-                                    className="export-item"
-                                    onClick={() => {
-                                        downloadBPMN();
-                                        setShowExportMenu(false);
-                                    }}
-                                >
-                                    <img src={downloadIcon} alt="BPMN" className="export-icon" />
-                                    <span>BPMN</span>
-                                </div>
-
-                            <div className="export-item">
-                                <img src={pdfIcon} alt="PDF" className="export-icon" />
-                                <span>PDF</span>
-                            </div>
-                            <div className="export-item">
-                                <img src={svgIcon} alt="SVG" className="export-icon" />
-                                <span>SVG</span>
-                            </div>
-                            <div className="export-item">
-                                 <img src={htmlIcon} alt="HTML" className="export-icon" />
-                                 <span>HTML</span>
-                            </div>
-                            <div className="export-item">
-                                 <img src={printIcon} alt="PRINT" className="export-icon"/>
-                                 <span>PRINT</span>
-                            </div>
+    // ── Render ────────────────────────────────────────────────────────────────
+    return (
+        <div className="library-hierarchy-widget" data-locked={isLockedByAnotherUser()}>
+            <div className="library-hierarchy-header">
+                <h3 style={{ visibility: "hidden" }}>{frameworkName?.value || "Library Hierarchy"}</h3>
+                <div className="header-buttons">
+                    {!isReadOnly && (
+                        <div className="editable-buttons">
+                            <button className="btn-save" onClick={exportAndSaveXML}>
+                                <span>
+                                    <img src={saveIcon} alt="Save" style={{ width: "18px", height: "18px", position: "relative", top: "-1.5px" }} />
+                                    Save Framework
+                                </span>
+                            </button>
+                            <button className="btn-change" onClick={handleUndo} title="Undo">
+                                <img src={undoIcon} alt="Undo" style={{ width: "16px", height: "16px" }} />
+                            </button>
+                            <button className="btn-change" onClick={handleRedo} title="Redo">
+                                <img src={redoIcon} alt="Redo" style={{ width: "16px", height: "16px" }} />
+                            </button>
                         </div>
                     )}
+                    <div className="export-wrapper" ref={exportRef}>
+                        <button className="btn-change" onClick={() => setShowExportMenu(prev => !prev)} title="Export">
+                            <img src={dotsIcon} alt="Export" style={{ width: "16px", height: "16px" }} />
+                        </button>
+                        {showExportMenu && (
+                            <div className="export-dropdown">
+                                <div className="export-header">Export as</div>
+                                <div className="export-item" onClick={() => { downloadBPMN(); setShowExportMenu(false); }}>
+                                    <img src={downloadIcon} alt="BPMN" className="export-icon" /><span>BPMN</span>
+                                </div>
+                                <div className="export-item">
+                                    <img src={pdfIcon}  alt="PDF"   className="export-icon" /><span>PDF</span>
+                                </div>
+                                <div className="export-item">
+                                    <img src={svgIcon}  alt="SVG"   className="export-icon" /><span>SVG</span>
+                                </div>
+                                <div className="export-item">
+                                    <img src={htmlIcon} alt="HTML"  className="export-icon" /><span>HTML</span>
+                                </div>
+                                <div className="export-item">
+                                    <img src={printIcon} alt="Print" className="export-icon" /><span>PRINT</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+            <div
+                ref={containerRef}
+                className="bpmn-library-container"
+                style={{
+                    height:          "600px",
+                    width:           "100%",
+                    border:          "1px solid #ccc",
+                    backgroundColor: "#fafafa",
+                    opacity:         isLockedByAnotherUser() ? 0.7 : 1
+                }}
+            />
         </div>
-        <div 
-            ref={containerRef} 
-            className="bpmn-library-container"
-            style={{ 
-                height: "600px", 
-                width: "100%",
-                border: "1px solid #ccc",
-                backgroundColor: "#fafafa",
-                opacity: isLockedByAnotherUser() ? 0.7 : 1
-            }}
-        />
-    </div>
-);
+    );
 }
