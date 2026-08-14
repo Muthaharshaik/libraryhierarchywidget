@@ -2,6 +2,7 @@ import { createElement, useEffect, useRef, useCallback, useState } from "react";
 import BpmnModeler from "bpmn-js/lib/Modeler";
 import "./ui/LibraryHierarchyWidget.css";
 import downloadIcon from "./assets/download-svgrepo-com.svg";
+import importIcon   from "./assets/import-svgrepo-com.svg";
 import saveIcon     from "./assets/save-svgrepo-com.svg";
 import undoIcon     from "./assets/undo-svgrepo-com.svg";
 import redoIcon     from "./assets/redo-svgrepo-com.svg";
@@ -10,6 +11,7 @@ import pdfIcon      from "./assets/document-svgrepo-com.svg";
 import svgIcon      from "./assets/image-svgrepo-com.svg";
 import htmlIcon     from "./assets/html-tag-svgrepo-com.svg";
 import printIcon    from "./assets/print-svgrepo-com.svg";
+import { transformPrimeBpmn } from "./components/PrimeBpmnImporter";
 
 // ── Toggle button colours ─────────────────────────────────────────────────────
 const TOGGLE_BG_EXPANDED  = "#2cb5b5";
@@ -35,6 +37,10 @@ export function LibraryHierarchyWidget(props) {
     const [pendingLibraryId, setPendingLibraryId] = useState(null);
     const [showExportMenu, setShowExportMenu]     = useState(false);
     const exportRef = useRef(null);
+
+    // Import: hidden file input + the parsed-but-not-yet-applied candidate.
+    const fileInputRef = useRef(null);
+    const [pendingImport, setPendingImport] = useState(null);
 
     // Collapse state: Map<elementId, boolean> — true = collapsed
     const collapseStateRef = useRef(new Map());
@@ -506,6 +512,112 @@ export function LibraryHierarchyWidget(props) {
         }).catch(err => console.error("Error downloading BPMN:", err));
     }, [frameworkName]);
 
+    // ── Info overlay (import results) ─────────────────────────────────────────
+    const showInfoOverlay = useCallback((title, lines, timeout = 6000) => {
+        if (!containerRef.current) return;
+        containerRef.current.querySelectorAll(".validation-error-overlay")
+            .forEach(e => e.remove());
+
+        const overlay     = document.createElement("div");
+        overlay.className = "validation-error-overlay info";
+
+        const header      = document.createElement("div");
+        header.className  = "validation-error-header";
+        header.innerHTML  = `<span class="icon">✓</span><span></span>`;
+        header.lastChild.textContent = title;
+
+        const content     = document.createElement("div");
+        content.className = "validation-error-content";
+        lines.forEach(text => {
+            const line = document.createElement("div");
+            line.textContent        = text;
+            line.style.marginBottom = "4px";
+            content.appendChild(line);
+        });
+
+        const close       = document.createElement("button");
+        close.className   = "validation-error-close";
+        close.innerHTML   = "×";
+
+        overlay.appendChild(close);
+        overlay.appendChild(header);
+        overlay.appendChild(content);
+        containerRef.current.appendChild(overlay);
+
+        const t = setTimeout(() => overlay.remove(), timeout);
+        close.onclick = () => { clearTimeout(t); overlay.remove(); };
+    }, []);
+
+    // ── Import BPMN ───────────────────────────────────────────────────────────
+    const handleImportClick = useCallback(() => {
+        if (isReadOnly) return;
+        // Reset value so re-picking the same file still fires change.
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        fileInputRef.current?.click();
+    }, [isReadOnly]);
+
+    const handleFileSelected = useCallback((event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onerror = () => showValidationError(["Could not read the selected file."]);
+        reader.onload  = () => {
+            try {
+                const { xml, stats } = transformPrimeBpmn(String(reader.result));
+                setPendingImport({ fileName: file.name, xml, stats });
+            } catch (err) {
+                showValidationError([err.message || "Could not import this BPMN file."]);
+            }
+        };
+        reader.readAsText(file);
+    }, [showValidationError]);
+
+    const applyImport = useCallback(() => {
+        const candidate = pendingImport;
+        if (!candidate || !modelerRef.current) return;
+        setPendingImport(null);
+
+        collapseStateRef.current = new Map();
+        // Keep the ref pointing at what is actually on the canvas.
+        lastImportedXmlRef.current = candidate.xml;
+
+        modelerRef.current
+            .importXML(candidate.xml)
+            .then(({ warnings }) => {
+                if (warnings.length) console.warn("BPMN Import Warnings:", warnings);
+                modelerRef.current.get("canvas").zoom("fit-viewport");
+                refreshOverlays(modelerRef.current);
+
+                const s     = candidate.stats;
+                const lines = [
+                    `${s.libraryCount} libraries and ${s.linkCount} links loaded.`
+                ];
+                if (s.unconnectedCount) {
+                    lines.push(`${s.unconnectedCount} ${s.unconnectedCount === 1 ? "library is" : "libraries are"} not connected to anything — link ${s.unconnectedCount === 1 ? "it" : "them"} as needed.`);
+                }
+                if (s.generatedPositions) {
+                    lines.push(`${s.generatedPositions} ${s.generatedPositions === 1 ? "node" : "nodes"} had no saved position and were placed below the diagram.`);
+                }
+                if (s.droppedFlowCount) {
+                    lines.push(`${s.droppedFlowCount} incomplete ${s.droppedFlowCount === 1 ? "connector was" : "connectors were"} skipped.`);
+                }
+                if (s.skippedFlowNodes) {
+                    lines.push(`${s.skippedFlowNodes} events/gateways were skipped — a library hierarchy holds libraries only.`);
+                }
+                lines.push("Press Save Framework to keep this import.");
+
+                showInfoOverlay("Import complete", lines, 12000);
+            })
+            .catch(err => {
+                console.error("Error importing BPMN diagram:", err);
+                showValidationError([
+                    "The file could not be loaded onto the canvas.",
+                    err.message || "Unknown error."
+                ]);
+            });
+    }, [pendingImport, refreshOverlays, showInfoOverlay, showValidationError]);
+
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="library-hierarchy-widget" data-locked={isLockedByAnotherUser()}>
@@ -518,6 +630,12 @@ export function LibraryHierarchyWidget(props) {
                                 <span>
                                     <img src={saveIcon} alt="Save" style={{ width: "18px", height: "18px", position: "relative", top: "-1.5px" }} />
                                     Save Framework
+                                </span>
+                            </button>
+                            <button className="btn-change" onClick={handleImportClick} title="Import BPMN">
+                                <span>
+                                    <img src={importIcon} alt="Import" style={{ width: "16px", height: "16px", position: "relative", top: "-1px" }} />
+                                    Import Framework
                                 </span>
                             </button>
                             <button className="btn-change" onClick={handleUndo} title="Undo">
@@ -566,6 +684,43 @@ export function LibraryHierarchyWidget(props) {
                     opacity:         isLockedByAnotherUser() ? 0.7 : 1
                 }}
             />
+
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".bpmn,.xml,text/xml,application/xml"
+                style={{ display: "none" }}
+                onChange={handleFileSelected}
+            />
+
+            {pendingImport && (
+                <div className="import-confirm-backdrop">
+                    <div className="import-confirm">
+                        <div className="import-confirm-title">Replace current hierarchy?</div>
+                        <div className="import-confirm-body">
+                            <div className="import-confirm-file">{pendingImport.fileName}</div>
+                            <div>
+                                Found {pendingImport.stats.libraryCount} libraries
+                                and {pendingImport.stats.linkCount} links.
+                            </div>
+                            <div className="import-confirm-warn">
+                                This replaces everything currently on the canvas and cannot be
+                                undone. Nothing is written to the framework until you press
+                                Save Framework, so leaving the page without saving keeps the
+                                existing hierarchy.
+                            </div>
+                        </div>
+                        <div className="import-confirm-actions">
+                            <button className="import-btn-cancel" onClick={() => setPendingImport(null)}>
+                                Cancel
+                            </button>
+                            <button className="import-btn-confirm" onClick={applyImport}>
+                                Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
