@@ -295,6 +295,7 @@ export function LibraryHierarchyWidget(props) {
         const CustomLibraryRules      = require("./components/CustomLibraryRules");
         const CustomLibraryContextPad = require("./components/CustomLibraryContextPad");
         const CustomLibraryNameSync   = require("./components/CustomLibraryNameSync");
+        const CustomLibraryAutoPlace  = require("./components/CustomLibraryAutoPlace");
 
         const modeler = new BpmnModeler({
             container: containerRef.current,
@@ -304,7 +305,8 @@ export function LibraryHierarchyWidget(props) {
                 CustomLibraryRendererMod,
                 CustomLibraryRules,
                 CustomLibraryContextPad,
-                CustomLibraryNameSync
+                CustomLibraryNameSync,
+                CustomLibraryAutoPlace
             ],
             moddleExtensions: {
                 library: require("./components/libraryModdle").libraryModdle
@@ -344,6 +346,14 @@ export function LibraryHierarchyWidget(props) {
 
                 eventBus.on("library.open", (event) => {
                     setPendingLibraryId(event.libraryId);
+                });
+
+                // Appending onto a collapsed node would drop the new child into
+                // a hidden row — expand first so it is visible where it lands.
+                eventBus.on("library.ensure-expanded", (event) => {
+                    if (collapseStateRef.current.get(event.elementId) === true) {
+                        handleToggleCollapse(event.elementId, modeler);
+                    }
                 });
 
                 eventBus.on("element.dblclick", (event) => {

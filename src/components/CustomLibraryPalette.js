@@ -1,8 +1,11 @@
+import { createLibraryShape } from "./createLibraryShape";
+
 class CustomLibraryPalette {
-    constructor(bpmnFactory, create, elementFactory, palette, translate, handTool, lassoTool, spaceTool, globalConnect) {
+    constructor(bpmnFactory, create, elementFactory, elementRegistry, palette, translate, handTool, lassoTool, spaceTool, globalConnect) {
         this.bpmnFactory    = bpmnFactory;
         this.create         = create;
         this.elementFactory = elementFactory;
+        this.elementRegistry= elementRegistry;
         this.translate      = translate;
         this.handTool       = handTool;
         this.lassoTool      = lassoTool;
@@ -13,23 +16,11 @@ class CustomLibraryPalette {
     }
 
     getPaletteEntries() {
-        const { bpmnFactory, create, elementFactory, handTool, lassoTool, spaceTool, globalConnect } = this;
+        const { bpmnFactory, create, elementFactory, elementRegistry, handTool, lassoTool, spaceTool, globalConnect } = this;
 
         function createLibrary() {
             return function(event) {
-                const businessObject = bpmnFactory.create("bpmn:SubProcess", {
-                    name: "New Library"
-                });
-                businessObject.set("library:libraryName", "New Library");
-                businessObject.set("library:libraryId",   `lib_${Date.now()}`);
-
-                const shape = elementFactory.createShape({
-                    type: "bpmn:SubProcess",
-                    businessObject,
-                    width:  260,
-                    height: 60
-                });
-                create.start(event, shape);
+                create.start(event, createLibraryShape(bpmnFactory, elementFactory, elementRegistry));
             };
         }
 
@@ -92,6 +83,7 @@ CustomLibraryPalette.$inject = [
     "bpmnFactory",
     "create",
     "elementFactory",
+    "elementRegistry",
     "palette",
     "translate",
     "handTool",
