@@ -296,6 +296,7 @@ export function LibraryHierarchyWidget(props) {
         const CustomLibraryContextPad = require("./components/CustomLibraryContextPad");
         const CustomLibraryNameSync   = require("./components/CustomLibraryNameSync");
         const CustomLibraryAutoPlace  = require("./components/CustomLibraryAutoPlace");
+        const CustomLibraryReadOnly   = require("./components/CustomLibraryReadOnly");
 
         const modeler = new BpmnModeler({
             container: containerRef.current,
@@ -306,7 +307,10 @@ export function LibraryHierarchyWidget(props) {
                 CustomLibraryRules,
                 CustomLibraryContextPad,
                 CustomLibraryNameSync,
-                CustomLibraryAutoPlace
+                CustomLibraryAutoPlace,
+                // Vetoes drag/resize/connect/delete instead of letting them run
+                // and silently throwing the result away.
+                ...(isReadOnly ? [CustomLibraryReadOnly] : [])
             ],
             moddleExtensions: {
                 library: require("./components/libraryModdle").libraryModdle
@@ -334,13 +338,6 @@ export function LibraryHierarchyWidget(props) {
                 eventBus.on("connection.added",   () => refreshOverlays(modeler));
                 eventBus.on("shape.removed",      () => refreshOverlays(modeler));
                 eventBus.on("connection.removed", () => refreshOverlays(modeler));
-
-                if (isReadOnly) {
-                    eventBus.on("commandStack.execute", 10000, (event) => {
-                        event.stopPropagation();
-                        return false;
-                    });
-                }
 
                 eventBus.on("library.unsaved-warning", () => showUnsavedWarning());
 
@@ -630,7 +627,9 @@ export function LibraryHierarchyWidget(props) {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="library-hierarchy-widget" data-locked={isLockedByAnotherUser()}>
+        <div className="library-hierarchy-widget"
+             data-locked={isLockedByAnotherUser()}
+             data-readonly={isReadOnly}>
             <div className="library-hierarchy-header">
                 <h3 style={{ visibility: "hidden" }}>{frameworkName?.value || "Library Hierarchy"}</h3>
                 <div className="header-buttons">

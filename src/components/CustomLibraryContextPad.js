@@ -27,7 +27,8 @@ class CustomLibraryContextPad {
         }
 
         const widgetContainer = document.querySelector('.library-hierarchy-widget');
-        const isLocked = widgetContainer?.getAttribute('data-locked') === 'true';
+        const isReadOnly = widgetContainer?.getAttribute('data-locked')   === 'true' ||
+                           widgetContainer?.getAttribute('data-readonly') === 'true';
 
         // A collapsed parent hides its whole subtree, and that state lives in the
         // React widget — ask it to expand so the new child does not land in a
@@ -40,7 +41,7 @@ class CustomLibraryContextPad {
             return createLibraryShape(bpmnFactory, elementFactory, elementRegistry);
         }
 
-        if (!isLocked) {
+        if (!isReadOnly) {
             return {
                 // Child library straight off the node: click drops it in place,
                 // dragging lets you pick the spot. Either way the parent link is

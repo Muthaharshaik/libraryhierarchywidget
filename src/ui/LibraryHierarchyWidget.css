@@ -574,16 +574,19 @@
 .validation-error-overlay.lock-warning { background: #ffc107; color: #000; }
 .validation-error-overlay.lock-warning .validation-error-close { color: #000; }
 
-/* ── Locked state ── */
-.library-hierarchy-widget[data-locked="true"] .djs-palette,
-.library-hierarchy-widget[data-locked="true"] .djs-context-pad {
+/* ── Read-only / locked state ──
+   Only the editing UI is hidden. Pointer events stay live so read-only users
+   can still pan the diagram, zoom, select a node and open a library — every
+   editing gesture is vetoed by CustomLibraryReadOnly instead. */
+.library-hierarchy-widget[data-locked="true"]   .djs-palette,
+.library-hierarchy-widget[data-locked="true"]   .djs-context-pad,
+.library-hierarchy-widget[data-readonly="true"] .djs-palette,
+.library-hierarchy-widget[data-readonly="true"] .djs-context-pad {
     display: none !important;
 }
 
 .library-hierarchy-widget[data-locked="true"] .bpmn-library-container {
-    pointer-events: none;
     opacity: 0.8;
-    cursor: not-allowed;
 }
 
 /* ── Open library icon ── */
