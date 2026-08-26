@@ -5,8 +5,8 @@
  * left panel and one appended straight off a node are byte-for-byte identical
  * in the saved XML.
  */
-export const NODE_WIDTH  = 260;
-export const NODE_HEIGHT = 60;
+export const NODE_WIDTH  = 250;
+export const NODE_HEIGHT = 50;
 
 const DEFAULT_NAME = "New Library";
 

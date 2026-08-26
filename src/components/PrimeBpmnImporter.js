@@ -50,8 +50,8 @@ const ACTIVITY_TAGS = new Set([
     "adHocSubProcess"
 ]);
 
-const NODE_W = 260;
-const NODE_H = 60;
+const NODE_W = 250;
+const NODE_H = 50;
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 

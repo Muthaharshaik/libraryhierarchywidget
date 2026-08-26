@@ -79,7 +79,7 @@ export function LibraryHierarchyWidget(props) {
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
       <bpmndi:BPMNShape id="SubProcess_Root_di" bpmnElement="SubProcess_Root">
-        <dc:Bounds x="200" y="100" width="260" height="60"/>
+        <dc:Bounds x="200" y="100" width="250" height="50"/>
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
