@@ -19,6 +19,11 @@
  * widget already speaks: every node a bpmn:SubProcess carrying
  * library:libraryId + library:libraryName, one process, one diagram.
  *
+ * The same path also has to swallow files this widget produced itself, including
+ * ones exported before the moddle extension was taught to keep BPMN's lower-case
+ * tag alias (see libraryModdle) and which therefore say <bpmn:SubProcess>. Tag
+ * names are matched case-insensitively so those still import.
+ *
  * What we do NOT do is invent structure. The imported diagram mirrors the file:
  * no framework root is added, and libraries the file left unconnected stay
  * unconnected, exactly as Prime displays them. Building the hierarchy out is the
@@ -35,19 +40,23 @@ const NS = {
 
 // Everything Prime may have used to draw a library box. Events and gateways are
 // meaningless in a library hierarchy and are reported as skipped.
+//
+// Lower-cased because every tag comparison in this file is case-insensitive: BPMN
+// itself is case-sensitive, but real exports are not reliably spec-cased, so we
+// match on the letters and ignore the casing.
 const ACTIVITY_TAGS = new Set([
     "task",
-    "subProcess",
-    "callActivity",
-    "userTask",
-    "manualTask",
-    "serviceTask",
-    "scriptTask",
-    "sendTask",
-    "receiveTask",
-    "businessRuleTask",
+    "subprocess",
+    "callactivity",
+    "usertask",
+    "manualtask",
+    "servicetask",
+    "scripttask",
+    "sendtask",
+    "receivetask",
+    "businessruletask",
     "transaction",
-    "adHocSubProcess"
+    "adhocsubprocess"
 ]);
 
 const NODE_W = 250;
@@ -72,25 +81,38 @@ function sanitizeId(raw, fallback) {
     return id;
 }
 
+/** Tag names are compared case-insensitively — see ACTIVITY_TAGS. */
+function localNameOf(element) {
+    return (element.localName || "").toLowerCase();
+}
+
 /**
  * Namespace-aware lookup with a prefix-only fallback: some tools emit BPMN
  * without declaring the standard namespaces, which would make getElementsByTagNameNS
  * come back empty.
+ *
+ * The namespaced query is case-sensitive, so a mis-cased tag falls through to the
+ * scan below rather than being reported as missing.
  */
 function findElements(doc, namespace, localName) {
+    const wanted = localName.toLowerCase();
     const byNs = Array.from(doc.getElementsByTagNameNS(namespace, localName));
     if (byNs.length) return byNs;
-    return Array.from(doc.getElementsByTagName("*")).filter(el => el.localName === localName);
+    return Array.from(doc.getElementsByTagName("*")).filter(el => localNameOf(el) === wanted);
 }
 
 function findAllByLocalNames(doc, namespace, localNames) {
-    let candidates = Array.from(doc.getElementsByTagNameNS(namespace, "*"));
-    if (!candidates.length) candidates = Array.from(doc.getElementsByTagName("*"));
-    return candidates.filter(el => localNames.has(el.localName));
+    const byNs = Array.from(doc.getElementsByTagNameNS(namespace, "*"));
+    const matched = byNs.filter(el => localNames.has(localNameOf(el)));
+    // Nothing matched inside the namespace: either the file declares no BPMN
+    // namespace at all, or it declares it only on <definitions>. Widen the search.
+    if (matched.length) return matched;
+    return Array.from(doc.getElementsByTagName("*")).filter(el => localNames.has(localNameOf(el)));
 }
 
 function firstChildByLocalName(element, localName) {
-    return Array.from(element.children).find(child => child.localName === localName) || null;
+    const wanted = localName.toLowerCase();
+    return Array.from(element.children).find(child => localNameOf(child) === wanted) || null;
 }
 
 function readNumber(value) {
@@ -148,7 +170,7 @@ function collectDiWaypoints(doc) {
         const ref = edge.getAttribute("bpmnElement");
         if (!ref || map.has(ref)) return;
         const points = Array.from(edge.children)
-            .filter(child => child.localName === "waypoint")
+            .filter(child => localNameOf(child) === "waypoint")
             .map(child => ({ x: readNumber(child.getAttribute("x")), y: readNumber(child.getAttribute("y")) }))
             .filter(p => p.x !== null && p.y !== null);
         if (points.length >= 2) map.set(ref, points);
@@ -198,18 +220,18 @@ function collectNodes(doc, diBounds) {
 
 function countSkippedFlowNodes(doc) {
     const skippable = new Set([
-        "startEvent",
-        "endEvent",
-        "intermediateCatchEvent",
-        "intermediateThrowEvent",
-        "boundaryEvent",
-        "exclusiveGateway",
-        "inclusiveGateway",
-        "parallelGateway",
-        "eventBasedGateway",
-        "complexGateway",
-        "dataObjectReference",
-        "dataStoreReference"
+        "startevent",
+        "endevent",
+        "intermediatecatchevent",
+        "intermediatethrowevent",
+        "boundaryevent",
+        "exclusivegateway",
+        "inclusivegateway",
+        "parallelgateway",
+        "eventbasedgateway",
+        "complexgateway",
+        "dataobjectreference",
+        "datastorereference"
     ]);
     return findAllByLocalNames(doc, NS.bpmn, skippable).length;
 }
@@ -295,7 +317,7 @@ function collectEdges(doc, byOriginalId) {
         if (node.parentId) return;
         let ancestor = node.element.parentElement;
         while (ancestor) {
-            if (ACTIVITY_TAGS.has(ancestor.localName)) {
+            if (ACTIVITY_TAGS.has(localNameOf(ancestor))) {
                 const parent = byOriginalId.get(ancestor.getAttribute("id"));
                 if (parent && parent.id !== node.id &&
                     addEdge(`SequenceFlow_nested_${nestedLinks}`, parent, node)) {

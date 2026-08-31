@@ -598,7 +598,8 @@ export function LibraryHierarchyWidget(props) {
 
                 const s     = candidate.stats;
                 const lines = [
-                    `${s.libraryCount} libraries and ${s.linkCount} links loaded.`
+                    `${s.libraryCount} ${s.libraryCount === 1 ? "library" : "libraries"} and ` +
+                    `${s.linkCount} ${s.linkCount === 1 ? "link" : "links"} loaded.`
                 ];
                 if (s.unconnectedCount) {
                     lines.push(`${s.unconnectedCount} ${s.unconnectedCount === 1 ? "library is" : "libraries are"} not connected to anything — link ${s.unconnectedCount === 1 ? "it" : "them"} as needed.`);
@@ -610,7 +611,7 @@ export function LibraryHierarchyWidget(props) {
                     lines.push(`${s.droppedFlowCount} incomplete ${s.droppedFlowCount === 1 ? "connector was" : "connectors were"} skipped.`);
                 }
                 if (s.skippedFlowNodes) {
-                    lines.push(`${s.skippedFlowNodes} events/gateways were skipped — a library hierarchy holds libraries only.`);
+                    lines.push(`${s.skippedFlowNodes} ${s.skippedFlowNodes === 1 ? "event/gateway was" : "events/gateways were"} skipped — a library hierarchy holds libraries only.`);
                 }
                 lines.push("Press Save Framework to keep this import.");
 
