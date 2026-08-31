@@ -443,7 +443,7 @@ export function LibraryHierarchyWidget(props) {
         if (!validation.valid) { showValidationError(validation.errors); return; }
         modelerRef.current
             .saveXML({ format: true })
-            .then(({ xml }) => { libraryXML?.setValue(xml); onSaveXML.execute(); })
+            .then(({ xml }) => { libraryXML?.setValue(xml); onSaveXML.execute(); modelerRef.current?.get("commandStack").clear(); })
             .catch(err => console.error("Error exporting BPMN XML:", err));
     }, [libraryXML, onSaveXML, validateDiagram, isReadOnly]);
 
