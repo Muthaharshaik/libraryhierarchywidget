@@ -12,11 +12,28 @@ import svgIcon      from "./assets/image-svgrepo-com.svg";
 import htmlIcon     from "./assets/html-tag-svgrepo-com.svg";
 import printIcon    from "./assets/print-svgrepo-com.svg";
 import { transformPrimeBpmn } from "./components/PrimeBpmnImporter";
+import {
+    exportAsSVG,
+    exportAsPDF,
+    exportAsHTML,
+    printDiagram,
+    sanitizeFileName,
+    downloadBlob
+} from "./components/exportDiagram";
 
 // ── Toggle button colours ─────────────────────────────────────────────────────
 const TOGGLE_BG_EXPANDED  = "#2cb5b5";
 const TOGGLE_BG_COLLAPSED = "#e07b3a";
 const TOGGLE_SIZE         = 22;
+
+// ── Export menu entries ───────────────────────────────────────────────────────
+const EXPORT_ITEMS = [
+    { kind: "BPMN",  label: "BPMN",  icon: downloadIcon },
+    { kind: "PDF",   label: "PDF",   icon: pdfIcon },
+    { kind: "SVG",   label: "SVG",   icon: svgIcon },
+    { kind: "HTML",  label: "HTML",  icon: htmlIcon },
+    { kind: "PRINT", label: "PRINT", icon: printIcon }
+];
 
 export function LibraryHierarchyWidget(props) {
     const {
@@ -37,6 +54,11 @@ export function LibraryHierarchyWidget(props) {
     const [pendingLibraryId, setPendingLibraryId] = useState(null);
     const [showExportMenu, setShowExportMenu]     = useState(false);
     const exportRef = useRef(null);
+
+    // Which export is in flight ("PDF", "PRINT", …) — state drives the spinner,
+    // the ref guards against a second click landing before React re-renders.
+    const [exportBusy, setExportBusy] = useState(null);
+    const exportBusyRef = useRef(null);
 
     // Import: hidden file input + the parsed-but-not-yet-applied candidate.
     const fileInputRef = useRef(null);
@@ -501,23 +523,71 @@ export function LibraryHierarchyWidget(props) {
         setTimeout(() => overlay.remove(), 5000);
     };
 
-    // ── Download BPMN ─────────────────────────────────────────────────────────
-    const downloadBPMN = useCallback(() => {
+    // ── Export ────────────────────────────────────────────────────────────────
+    const diagramTitle = frameworkName?.value || "Library Hierarchy";
+    const exportBaseName = frameworkName?.value
+        ? `${sanitizeFileName(frameworkName.value)}_Library_Hierarchy`
+        : "Library_Hierarchy";
+
+    // Every menu entry funnels through here: one place to close the dropdown,
+    // block double-clicks while a slow raster/print is running, and surface
+    // failures instead of leaving the user staring at an unchanged screen.
+    const runExport = useCallback((kind, task) => {
         if (!modelerRef.current) return;
-        modelerRef.current.saveXML({ format: true }).then(({ xml }) => {
-            const blob = new Blob([xml], { type: "application/bpmn+xml" });
-            const url  = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href  = url;
-            link.download = frameworkName?.value
-                ? `${frameworkName.value.replace(/\s+/g, "_")}_Library_Hierarchy.bpmn`
-                : "Library_Hierarchy.bpmn";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }).catch(err => console.error("Error downloading BPMN:", err));
-    }, [frameworkName]);
+        if (exportBusyRef.current) return;
+
+        exportBusyRef.current = kind;
+        setExportBusy(kind);
+        setShowExportMenu(false);
+
+        Promise.resolve()
+            .then(task)
+            .catch(err => {
+                console.error(`Error exporting ${kind}:`, err);
+                showValidationError([
+                    `Could not export as ${kind}.`,
+                    err?.message || "Unknown error."
+                ]);
+            })
+            .finally(() => {
+                exportBusyRef.current = null;
+                setExportBusy(null);
+            });
+    }, [showValidationError]);
+
+    const downloadBPMN = useCallback(() => {
+        runExport("BPMN", async () => {
+            const { xml } = await modelerRef.current.saveXML({ format: true });
+            downloadBlob(
+                new Blob([xml], { type: "application/bpmn+xml" }),
+                `${exportBaseName}.bpmn`
+            );
+        });
+    }, [runExport, exportBaseName]);
+
+    const downloadPDF = useCallback(() => {
+        runExport("PDF", () => exportAsPDF(modelerRef.current, exportBaseName, diagramTitle));
+    }, [runExport, exportBaseName, diagramTitle]);
+
+    const downloadSVG = useCallback(() => {
+        runExport("SVG", () => exportAsSVG(modelerRef.current, exportBaseName));
+    }, [runExport, exportBaseName]);
+
+    const downloadHTML = useCallback(() => {
+        runExport("HTML", () => exportAsHTML(modelerRef.current, exportBaseName, diagramTitle));
+    }, [runExport, exportBaseName, diagramTitle]);
+
+    const handlePrint = useCallback(() => {
+        runExport("PRINT", () => printDiagram(modelerRef.current, diagramTitle));
+    }, [runExport, diagramTitle]);
+
+    const exportHandlers = {
+        BPMN:  downloadBPMN,
+        PDF:   downloadPDF,
+        SVG:   downloadSVG,
+        HTML:  downloadHTML,
+        PRINT: handlePrint
+    };
 
     // ── Info overlay (import results) ─────────────────────────────────────────
     const showInfoOverlay = useCallback((title, lines, timeout = 6000) => {
@@ -657,27 +727,40 @@ export function LibraryHierarchyWidget(props) {
                         </div>
                     )}
                     <div className="export-wrapper" ref={exportRef}>
-                        <button className="btn-change" onClick={() => setShowExportMenu(prev => !prev)} title="Export">
+                        <button
+                            className="btn-change"
+                            onClick={() => setShowExportMenu(prev => !prev)}
+                            title={exportBusy ? `Exporting ${exportBusy}…` : "Export"}
+                            disabled={!!exportBusy}
+                        >
                             <img src={dotsIcon} alt="Export" style={{ width: "16px", height: "16px" }} />
                         </button>
                         {showExportMenu && (
                             <div className="export-dropdown">
                                 <div className="export-header">Export as</div>
-                                <div className="export-item" onClick={() => { downloadBPMN(); setShowExportMenu(false); }}>
-                                    <img src={downloadIcon} alt="BPMN" className="export-icon" /><span>BPMN</span>
-                                </div>
-                                <div className="export-item">
-                                    <img src={pdfIcon}  alt="PDF"   className="export-icon" /><span>PDF</span>
-                                </div>
-                                <div className="export-item">
-                                    <img src={svgIcon}  alt="SVG"   className="export-icon" /><span>SVG</span>
-                                </div>
-                                <div className="export-item">
-                                    <img src={htmlIcon} alt="HTML"  className="export-icon" /><span>HTML</span>
-                                </div>
-                                <div className="export-item">
-                                    <img src={printIcon} alt="Print" className="export-icon" /><span>PRINT</span>
-                                </div>
+                                {EXPORT_ITEMS.map(item => (
+                                    <div
+                                        key={item.kind}
+                                        className="export-item"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={exportHandlers[item.kind]}
+                                        onKeyDown={e => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                exportHandlers[item.kind]();
+                                            }
+                                        }}
+                                    >
+                                        <img src={item.icon} alt={item.label} className="export-icon" />
+                                        <span>{item.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {exportBusy && (
+                            <div className="export-busy" role="status">
+                                Preparing {exportBusy}…
                             </div>
                         )}
                     </div>

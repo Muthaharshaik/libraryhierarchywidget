@@ -425,7 +425,51 @@
 }
 
 .export-item:hover { background: #f3f5f9; }
+.export-item:focus-visible {
+    background: #f3f5f9;
+    outline: 2px solid var(--lhw-accent, #2cb5b5);
+    outline-offset: -2px;
+}
 .export-icon { width: 18px; height: 18px; }
+
+/* Feedback while a slow export (raster → PDF, print) is being prepared. */
+.library-hierarchy-widget .btn-change:disabled {
+    cursor: default;
+    opacity: 0.55;
+    box-shadow: none;
+}
+
+.export-busy {
+    position: absolute;
+    top: 36px;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    background: #1e2d4a;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 12px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    z-index: 2000;
+}
+
+.export-busy::before {
+    content: "";
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: lhwExportSpin 0.7s linear infinite;
+}
+
+@keyframes lhwExportSpin {
+    to { transform: rotate(360deg); }
+}
 
 /* ── Validation / alert overlay ── */
 .validation-error-overlay {
