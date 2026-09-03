@@ -598,6 +598,14 @@
 }
 .import-btn-confirm:hover { background: #249c9c; }
 
+/* Destructive confirm (delete a stored library) — same shape, red weight. */
+.import-btn-danger {
+    background: #d64545;
+    color: #ffffff;
+    border: 1px solid #d64545;
+}
+.import-btn-danger:hover { background: #bb3939; }
+
 /* ── Lock indicator ── */
 .lock-indicator {
     display: flex;

@@ -64,6 +64,10 @@ export function LibraryHierarchyWidget(props) {
     const fileInputRef = useRef(null);
     const [pendingImport, setPendingImport] = useState(null);
 
+    // Delete of a library that already exists in the framework waits here until
+    // the user confirms — see CustomLibraryDeleteConfirm.
+    const [pendingDelete, setPendingDelete] = useState(null);
+
     // Collapse state: Map<elementId, boolean> — true = collapsed
     const collapseStateRef = useRef(new Map());
 
@@ -319,6 +323,7 @@ export function LibraryHierarchyWidget(props) {
         const CustomLibraryNameSync   = require("./components/CustomLibraryNameSync");
         const CustomLibraryAutoPlace  = require("./components/CustomLibraryAutoPlace");
         const CustomLibraryReadOnly   = require("./components/CustomLibraryReadOnly");
+        const CustomLibraryDeleteConfirm = require("./components/CustomLibraryDeleteConfirm");
 
         const modeler = new BpmnModeler({
             container: containerRef.current,
@@ -330,6 +335,7 @@ export function LibraryHierarchyWidget(props) {
                 CustomLibraryContextPad,
                 CustomLibraryNameSync,
                 CustomLibraryAutoPlace,
+                CustomLibraryDeleteConfirm,
                 // Vetoes drag/resize/connect/delete instead of letting them run
                 // and silently throwing the result away.
                 ...(isReadOnly ? [CustomLibraryReadOnly] : [])
@@ -354,6 +360,14 @@ export function LibraryHierarchyWidget(props) {
                 canvas.zoom("fit-viewport");
 
                 refreshOverlays(modeler);
+
+                // Everything loaded from the framework is already stored, so
+                // deleting it has to be confirmed.
+                modeler.get("customLibraryDeleteConfirm").markCanvasAsSaved();
+
+                eventBus.on("library.confirm-delete", (event) => {
+                    setPendingDelete({ libraryNames: event.libraryNames });
+                });
 
                 eventBus.on("elements.changed",  () => refreshOverlays(modeler));
                 eventBus.on("shape.added",        () => refreshOverlays(modeler));
@@ -427,6 +441,7 @@ export function LibraryHierarchyWidget(props) {
             .then(() => {
                 modelerRef.current.get("canvas").zoom("fit-viewport");
                 refreshOverlays(modelerRef.current);
+                modelerRef.current.get("customLibraryDeleteConfirm").markCanvasAsSaved();
             })
             .catch(err => console.error("Error updating BPMN diagram:", err));
     }, [libraryXML?.value]);
@@ -465,7 +480,14 @@ export function LibraryHierarchyWidget(props) {
         if (!validation.valid) { showValidationError(validation.errors); return; }
         modelerRef.current
             .saveXML({ format: true })
-            .then(({ xml }) => { libraryXML?.setValue(xml); onSaveXML.execute(); modelerRef.current?.get("commandStack").clear(); })
+            .then(({ xml }) => {
+                libraryXML?.setValue(xml);
+                onSaveXML.execute();
+                modelerRef.current?.get("commandStack").clear();
+                // Libraries added in this session are now stored in the
+                // framework, so removing them needs confirming from here on.
+                modelerRef.current?.get("customLibraryDeleteConfirm").markCanvasAsSaved();
+            })
             .catch(err => console.error("Error exporting BPMN XML:", err));
     }, [libraryXML, onSaveXML, validateDiagram, isReadOnly]);
 
@@ -696,6 +718,15 @@ export function LibraryHierarchyWidget(props) {
             });
     }, [pendingImport, refreshOverlays, showInfoOverlay, showValidationError]);
 
+    // ── Delete confirmation ───────────────────────────────────────────────────
+    const resolveDelete = useCallback((confirmed) => {
+        const gate = modelerRef.current?.get("customLibraryDeleteConfirm");
+        setPendingDelete(null);
+        if (!gate) return;
+        if (confirmed) gate.confirm();
+        else gate.cancel();
+    }, []);
+
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="library-hierarchy-widget"
@@ -785,6 +816,40 @@ export function LibraryHierarchyWidget(props) {
                 style={{ display: "none" }}
                 onChange={handleFileSelected}
             />
+
+            {pendingDelete && (
+                <div className="import-confirm-backdrop">
+                    <div className="import-confirm">
+                        <div className="import-confirm-title">
+                            {pendingDelete.libraryNames.length > 1
+                                ? "Delete these libraries?"
+                                : "Delete this library?"}
+                        </div>
+                        <div className="import-confirm-body">
+                            <div className="import-confirm-file">
+                                {pendingDelete.libraryNames.join(", ")}
+                            </div>
+                            <div>
+                                Deleting {pendingDelete.libraryNames.length > 1 ? "these libraries" : "this library"} may
+                                delete all {pendingDelete.libraryNames.length > 1 ? "their" : "its"} related
+                                processes and process maps.
+                            </div>
+                            <div className="import-confirm-warn">
+                                Nothing is written to the framework until you press Save
+                                Framework.
+                            </div>
+                        </div>
+                        <div className="import-confirm-actions">
+                            <button className="import-btn-cancel" onClick={() => resolveDelete(false)}>
+                                Cancel
+                            </button>
+                            <button className="import-btn-danger" onClick={() => resolveDelete(true)}>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {pendingImport && (
                 <div className="import-confirm-backdrop">
