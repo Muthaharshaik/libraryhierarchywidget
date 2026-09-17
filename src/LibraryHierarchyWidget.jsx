@@ -611,31 +611,28 @@ export function LibraryHierarchyWidget(props) {
         PRINT: handlePrint
     };
 
-    // ── Ctrl/Cmd + S → download the BPMN ──────────────────────────────────────
-    // Held in a ref so the listener below is registered once per modeler, rather
-    // than being torn down and re-added every time exportBaseName changes.
-    const downloadBPMNRef = useRef(downloadBPMN);
-    useEffect(() => { downloadBPMNRef.current = downloadBPMN; }, [downloadBPMN]);
+    // ── Ctrl/Cmd + S → save the framework ─────────────────────────────────────
+    // Held in a ref so the listener below is registered once, rather than being
+    // torn down and re-added every time the save callback is rebuilt.
+    const saveShortcutRef = useRef(exportAndSaveXML);
+    useEffect(() => { saveShortcutRef.current = exportAndSaveXML; }, [exportAndSaveXML]);
 
-    // diagram-js binds the keyboard module to the canvas SVG (which carries
-    // tabindex="0"), so this only fires while the diagram has focus — Ctrl+S
-    // keeps its normal browser meaning everywhere else on the page.
+    // Bound to the document rather than the canvas, so the shortcut works
+    // wherever focus sits on the page. While read-only there is nothing to
+    // save, so we stay out of the way and Ctrl+S keeps its browser meaning.
     useEffect(() => {
-        const keyboard = modelerRef.current?.get("keyboard", false);
-        if (!keyboard) return;
+        if (isReadOnly) return;
 
-        const handler = ({ keyEvent }) => {
-            if (!(keyEvent.ctrlKey || keyEvent.metaKey) || keyEvent.altKey) return false;
-            if (String(keyEvent.key).toLowerCase() !== "s") return false;
+        const handler = (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+            if (String(e.key).toLowerCase() !== "s") return;
 
-            keyEvent.preventDefault();
-            downloadBPMNRef.current();
-            return true;
+            e.preventDefault();
+            saveShortcutRef.current();
         };
 
-        keyboard.addListener(handler);
-        return () => keyboard.removeListener(handler);
-        // The modeler — and with it the keyboard instance — is rebuilt on this dep.
+        document.addEventListener("keydown", handler);
+        return () => document.removeEventListener("keydown", handler);
     }, [isReadOnly]);
 
     // ── Info overlay (import results) ─────────────────────────────────────────
